@@ -1,0 +1,5 @@
+/* src/index.css — Tailwind v4 */
+@import "tailwindcss";
+
+/* optional: your custom globals (keep tiny) */
+html, body, #root { height: 100%; }

@@ -2,6 +2,7 @@ import flask
 import flask_cors
 import os
 import psycopg2
+import psycopg2.extras
 
 app = flask.Flask(__name__, template_folder='.')
 flask_cors.CORS(app)
@@ -34,8 +35,8 @@ def create_entry():
         
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                command = f"INSERT INTO post_table (post_title, club_name, officer_name, post_content, post_type) VALUE ({post_title}, {club_name}, {officer_name}, {post_content}, {post_type});"
-                cur.execute(command)
+                command = "INSERT INTO post_table (post_title, club_name, officer_name, post_content, post_type) VALUES (%s, %s, %s, %s, %s) RETURNING *;"
+                cur.execute(command, (post_title, club_name, officer_name, post_content, post_type))
                 
                 new_entry = cur.fetchone()
                 conn.commit()
@@ -52,10 +53,25 @@ def create_entry():
 def index():
     try:
         with get_db_connection() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 command = "SELECT * FROM post_table ORDER BY timestamp DESC LIMIT 5"
                 cur.execute(command)
                 entries = cur.fetchall()
-        return flask.jsonify([dict(entry) for entry in entries])
+                print(entries)
+        return flask.jsonify(entries)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)})
+
+
+@app.route('/delete_entry/<int:post_id>', methods=["DELETE"])
+def delete_entry(post_id):
+    print("Post_id name:", post_id)
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                command = "DELETE FROM post_table WHERE post_id = %s"
+                cur.execute(command, (post_id,))
+                conn.commit()
+        return flask.jsonify({"message": "Post deleted successfully!"})
     except Exception as e:
         return flask.jsonify({'error': str(e)})

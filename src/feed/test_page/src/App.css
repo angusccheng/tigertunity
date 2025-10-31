@@ -129,18 +129,6 @@
   margin-top: 20px;
 }
 
-input[type="text"],
-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  outline: none;
-  box-sizing: border-box;
-}
-
 /* When the input is focused (clicked on) */
 input[type="text"]:focus,
 textarea:focus {
@@ -152,6 +140,20 @@ textarea:focus {
 textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+input[type="text"],
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  outline: none;
+  box-sizing: border-box;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+
 }
 
 .delete-button {

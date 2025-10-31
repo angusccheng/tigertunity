@@ -187,11 +187,11 @@ function App() {
               <div key={post.post_id} className="post-card">
                 <div className="post-left">
                   <h3 className="post-title">{post.post_title}</h3>
+                  <p className="club-name">{post.club_name}</p>
                   <p className="post-content">{post.post_content}</p>
                 </div>
 
                 <div className="post-right">
-                  <p className="club-name">{post.club_name}</p>
                   {post.officer_name && (
                     <p className="officer-name">By: {post.officer_name}</p>
                   )}

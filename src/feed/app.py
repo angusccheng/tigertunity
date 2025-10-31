@@ -1,8 +1,10 @@
 import flask
+import flask_cors
 import os
 import psycopg2
 
 app = flask.Flask(__name__, template_folder='.')
+flask_cors.CORS(app)
 _DATABASE_URL = os.getenv('EXTERNAL_URL')
 
 '''
@@ -44,8 +46,9 @@ def create_entry():
                 
     except Exception as e:
         return flask.jsonify({'error': str(e)})
-    
-@app.route(['/', '/index'], methods=['GET'])
+
+@app.route('/index', methods=['GET'])
+@app.route('/', methods=['GET'])
 def index():
     try:
         with get_db_connection() as conn:

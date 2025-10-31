@@ -4,7 +4,7 @@ import os
 import psycopg2
 import psycopg2.extras
 
-app = flask.Flask(__name__, template_folder='.')
+app = flask.Flask(__name__, static_folder='../test_page/dist')
 flask_cors.CORS(app)
 _DATABASE_URL = os.getenv('EXTERNAL_URL')
 

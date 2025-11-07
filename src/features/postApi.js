@@ -1,8 +1,10 @@
-// src/services/postsApi.js
+// src/feed/postsApi.js
 // Simple adapter that mimics an API using localStorage.
 // Later, replace these functions with real fetch() calls to your backend.
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5001";
+import { getAccess } from "../auth";
+
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 async function handleResponse(r) {
   if (!r.ok) {
@@ -27,7 +29,10 @@ export async function createPost(input) {
   try {
     const r = await fetch(`${API_BASE}/api/posts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
       body: JSON.stringify(input),
     });
     return await handleResponse(r);

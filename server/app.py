@@ -8,6 +8,9 @@ from flask_jwt_extended import (
 )
 from sqlalchemy import text
 from database import SessionLocal, init_db
+import psycopg2, psycopg2.extras
+
+DATABASE_URL = os.getenv("NEON_URL")  # or whichever you’re using
 
 CAS_BASE = "https://fed.princeton.edu/cas"
 CAS_VALIDATE = f"{CAS_BASE}/p3/serviceValidate"   # JSON capable
@@ -23,7 +26,11 @@ app.config.update(
     JWT_ACCESS_TOKEN_EXPIRES=3600,      # 1h
     JWT_REFRESH_TOKEN_EXPIRES=86400,    # 1d
 )
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": FRONTEND_URL}})
+CORS(app,
+     supports_credentials=True,
+     resources={r"/*": {"origins": FRONTEND_URL}},
+     expose_headers=["Authorization"],
+     allow_headers=["Content-Type", "Authorization"])
 jwt = JWTManager(app)
 init_db()
 db = SessionLocal()
@@ -117,6 +124,77 @@ def logout_cas():
     # CAS global logout, then come back to app logout to clear tokens
     target = urllib.parse.quote(f"{BACKEND_URL}/logoutapp", safe="")
     return redirect(f"{CAS_BASE}/logout?service={target}", code=302)
+
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+    return conn
+
+
+@app.route("/api/posts", methods=["GET"])
+def list_posts():
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT * FROM post_table ORDER BY timestamp DESC LIMIT 5")
+                entries = cur.fetchall()
+        return jsonify(entries)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+@app.route("/api/posts", methods=["POST"])
+@jwt_required() 
+def create_post():
+    try:
+        username = get_jwt_identity()  # Princeton NetID of the user
+        if not username:
+            return jsonify({"error": "Unauthorized user"}), 403
+
+        data = request.get_json()
+        post_title = data.get("post_title")
+        club_name = data.get("club_name")
+        officer_name = data.get("officer_name")
+        post_content = data.get("post_content")
+        post_type = data.get("post_type")
+
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO post_table
+                    (post_title, club_name, officer_name, post_content, post_type)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING post_id, post_title, club_name, officer_name, post_content, timestamp, post_type
+                    """,
+                    (post_title, club_name, officer_name, post_content, post_type),
+                )
+                new_entry = cur.fetchone()
+                conn.commit()
+
+        keys = [
+            "post_id", "post_title", "club_name",
+            "officer_name", "post_content", "timestamp", "post_type"
+        ]
+        return jsonify({
+            "message": "Post created successfully",
+            "entry": dict(zip(keys, new_entry)),
+            "created_by": username
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/posts/<int:post_id>", methods=["DELETE"])
+def delete_post(post_id):
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM post_table WHERE post_id = %s", (post_id,))
+                conn.commit()
+        return jsonify({"message": "Post deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)

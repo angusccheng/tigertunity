@@ -2,7 +2,7 @@
 // Simple adapter that mimics an API using localStorage.
 // Later, replace these functions with real fetch() calls to your backend.
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5001";
 
 async function handleResponse(r) {
   if (!r.ok) {

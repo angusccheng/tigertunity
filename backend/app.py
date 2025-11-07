@@ -22,8 +22,21 @@ def get_db_connection():
     conn = psycopg2.connect(_DATABASE_URL, sslmode="require")
     return conn
 
-@app.route('/new', methods=['POST'])
-def create_entry():
+@app.route("/api/posts", methods=["GET"])
+def list_posts():
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                command = "SELECT * FROM post_table ORDER BY timestamp DESC LIMIT 5"
+                cur.execute(command)
+                entries = cur.fetchall()
+                print(entries)
+        return flask.jsonify(entries)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)})
+
+@app.route('/api/posts', methods=['POST'])
+def create_post():
     '''Create a new entry in the database'''
     try:
         data = flask.request.get_json()
@@ -39,32 +52,20 @@ def create_entry():
                 cur.execute(command, (post_title, club_name, officer_name, post_content, post_type))
                 
                 new_entry = cur.fetchone()
+                print(new_entry)
                 conn.commit()
+        
+        keys = ['post_id', 'post_title', 'club_name', 'officer_name', 'post_content', 'timestamp', 'post_type']
         return flask.jsonify({
             'message': 'Entry created successfully',
-            'entry': dict(new_entry)
+            'entry': dict(zip(keys, new_entry))
         })
                 
     except Exception as e:
         return flask.jsonify({'error': str(e)})
 
-@app.route('/index', methods=['GET'])
-@app.route('/', methods=['GET'])
-def index():
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                command = "SELECT * FROM post_table ORDER BY timestamp DESC LIMIT 5"
-                cur.execute(command)
-                entries = cur.fetchall()
-                print(entries)
-        return flask.jsonify(entries)
-    except Exception as e:
-        return flask.jsonify({'error': str(e)})
-
-
-@app.route('/delete_entry/<int:post_id>', methods=["DELETE"])
-def delete_entry(post_id):
+@app.route('/api/posts/<int:post_id>', methods=["DELETE"])
+def delete_post(post_id):
     print("Post_id name:", post_id)
     try:
         with get_db_connection() as conn:

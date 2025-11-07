@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listPosts, createPost, deletePost } from "./features/postApi.js";
+import { fetchPosts, createPost, deletePost } from "./features/postApi.js";
 import { getUser, clearTokens, refreshAccessIfNeeded } from "./auth.js";
 
 // Post type options
@@ -19,7 +19,9 @@ export default function App() {
   });
   const [errors, setErrors] = useState({});
 
-  const BACKEND = import.meta.env.VITE_BACKEND_URL;
+  const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  console.log("Backend URL:", BACKEND);
+
   const user = getUser(); // reads from sessionStorage
 
   // refresh access token every ~25 minutes
@@ -29,7 +31,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    (async () => setPosts(await listPosts()))();
+    (async () => setPosts(await fetchPosts()))();
   }, []);
 
   // Lock scroll when any modal is open
@@ -50,6 +52,7 @@ export default function App() {
   }
 
   async function onSubmit(e) {
+    console.log("i am doing this test right now");
     e.preventDefault();
     const v = validate(form);
     setErrors(v);
@@ -57,8 +60,10 @@ export default function App() {
 
     setSubmitting(true);
     try {
-      const created = await createPost(form);
-      setPosts((prev) => [created, ...prev]);
+      const response = await createPost(form);
+      const created = response.entry;
+      console.log(created);
+      setPosts((prev) => [created, ...prev].slice(0, 5));
       setForm({
         post_title: "",
         club_name: "",
@@ -70,7 +75,6 @@ export default function App() {
       setComposerOpen(false); // close overlay on success
     } catch (err) {
       console.error(err);
-      alert("Failed to create post.");
     } finally {
       setSubmitting(false);
     }
@@ -79,12 +83,14 @@ export default function App() {
   async function handleDelete(selectedPost) {
     if (!confirm("Are you sure you want to delete this post?")) return;
     try {
-      await deletePost(selectedPost.id);
-      setPosts((prev) => prev.filter((p) => p.id !== selectedPost.id));
+      await deletePost(selectedPost.post_id);
+
+      const latestPosts = await fetchPosts();
+      setPosts(latestPosts);
+
       setSelected(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete post.");
     }
   }
 
@@ -194,7 +200,7 @@ export default function App() {
 
           {posts.map((p) => (
             <article
-              key={p.id}
+              key={p.post_id}
               className="group mb-4 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-[#FF9000]/40"
             >
               <button
@@ -259,9 +265,8 @@ export default function App() {
               <div className="md:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-neutral-600">Post Title</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${
-                    errors.post_title ? "border-red-400" : "border-neutral-300"
-                  }`}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_title ? "border-red-400" : "border-neutral-300"
+                    }`}
                   value={form.post_title}
                   onChange={(e) => setForm({ ...form, post_title: e.target.value })}
                   placeholder="e.g., Robotics Club Call for Members"
@@ -271,9 +276,8 @@ export default function App() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-neutral-600">Club Name</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${
-                    errors.club_name ? "border-red-400" : "border-neutral-300"
-                  }`}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.club_name ? "border-red-400" : "border-neutral-300"
+                    }`}
                   value={form.club_name}
                   onChange={(e) => setForm({ ...form, club_name: e.target.value })}
                   placeholder="e.g., Princeton Robotics Club"
@@ -283,9 +287,8 @@ export default function App() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-neutral-600">Officer Name</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${
-                    errors.officer_name ? "border-red-400" : "border-neutral-300"
-                  }`}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.officer_name ? "border-red-400" : "border-neutral-300"
+                    }`}
                   value={form.officer_name}
                   onChange={(e) => setForm({ ...form, officer_name: e.target.value })}
                   placeholder="e.g., Jane Doe"
@@ -295,9 +298,8 @@ export default function App() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-neutral-600">Post Type</label>
                 <select
-                  className={`w-full appearance-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${
-                    errors.post_type ? "border-red-400" : "border-neutral-300"
-                  }`}
+                  className={`w-full appearance-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_type ? "border-red-400" : "border-neutral-300"
+                    }`}
                   value={form.post_type}
                   onChange={(e) => setForm({ ...form, post_type: e.target.value })}
                 >
@@ -313,9 +315,8 @@ export default function App() {
                 <label className="mb-1 block text-xs font-medium text-neutral-600">Post Content</label>
                 <textarea
                   rows={4}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${
-                    errors.post_content ? "border-red-400" : "border-neutral-300"
-                  }`}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_content ? "border-red-400" : "border-neutral-300"
+                    }`}
                   value={form.post_content}
                   onChange={(e) => setForm({ ...form, post_content: e.target.value })}
                   placeholder="Add event details, dates, links, etc."

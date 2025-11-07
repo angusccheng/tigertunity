@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AJAX Example</title>
+</head>
+<body>
+  <h1>AJAX Example</h1>
+  <button id="loadBtn">Load Message</button>
+  <p id="result">No message yet.</p>
+
+  <script>
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      // Send request to server asynchronously
+      fetch('/message')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('result').innerText = data.message;
+        })
+        .catch(error => console.error('Error:', error));
+    });
+  </script>
+</body>
+</html>

@@ -3,9 +3,12 @@ import flask_cors
 import os
 import psycopg2
 import psycopg2.extras
+import identity.flask
+import flask_sqlalchemy
+from flask_session import Session  #
 
-app = flask.Flask(__name__, static_folder='../test_page/dist')
-flask_cors.CORS(app)
+app = flask.Flask(__name__)
+flask_cors.CORS(app, supports_credentials=True) # 
 _DATABASE_URL = os.getenv('NEON_URL')
 
 '''
@@ -17,11 +20,29 @@ methods:
 
 '''
 
+# Database connection
 def get_db_connection():
     '''Create and return a database connection'''
     conn = psycopg2.connect(_DATABASE_URL, sslmode="require")
     return conn
 
+@app.route('/logout', methods=['GET'])
+def logout():
+    response = flask.redirect(flask.url_for('identity.logout'))
+    return response
+
+app.config['SCOPE'] = os.environ['SCOPE']
+app.config['ENDPOINT'] = os.environ['ENVIRON']
+auth = identity.flask.Auth(
+    app,
+    authority=os.environ['AUTHORITY'],
+    client_id=os.environ['CLIENT_ID'],
+    client_credential=os.environ['CLIENT_SECRET'],
+    redirect_uri=os.environ['REDIRECT_URI'],
+    post_logout_view=logout
+)
+
+# Displaying posts API
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
     try:
@@ -35,6 +56,7 @@ def list_posts():
     except Exception as e:
         return flask.jsonify({'error': str(e)})
 
+# Entry creation API
 @app.route('/api/posts', methods=['POST'])
 def create_post():
     '''Create a new entry in the database'''
@@ -64,6 +86,7 @@ def create_post():
     except Exception as e:
         return flask.jsonify({'error': str(e)})
 
+# Delete post API
 @app.route('/api/posts/<int:post_id>', methods=["DELETE"])
 def delete_post(post_id):
     print("Post_id name:", post_id)

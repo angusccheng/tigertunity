@@ -1,9 +1,10 @@
 import os
-from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, ForeignKey, TIMESTAMP
+from sqlalchemy.sql import func
 import sqlalchemy.orm
 import dotenv
 
-dotenv.load_dotenv()
+dotenv.load_dotenv('../.env')
 _database_url = os.getenv('NEON_URL')
 
 

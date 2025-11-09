@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, ForeignKey, TIMESTAMP, func
 import sqlalchemy.orm
 import dotenv
 

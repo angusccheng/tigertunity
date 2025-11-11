@@ -10,11 +10,15 @@ import datetime
 import json
 import dotenv
 import flask_jwt_extended
+import re
 
 app = flask.Flask(__name__)
 dotenv.load_dotenv('../.env')
 FRONTEND_URL = os.environ['FRONTEND_URL']
 APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
+
+_CAS_URL = 'https://fed.princeton.edu/cas/'
+_DATABASE_URL = os.getenv('NEON_URL')
 
 # CORS configuration for API endpoints
 flask_cors.CORS(app, resources={r'/api/*': {'origins': FRONTEND_URL}})
@@ -30,41 +34,12 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(hours=1)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 jwtManager = flask_jwt_extended.JWTManager(app)
 
-# Entra ID Configuration
-app.config['SCOPE'] = os.environ['SCOPE']
-app.config['ENDPOINT'] = os.environ['ENDPOINT']
-
-@app.route('/logoutapp', methods=['GET'])
-def logoutapp():
-    response = flask.redirect(FRONTEND_URL + '/logout')
-    return response
-
-# Initialize Entra Auth
-auth = identity.flask.Auth(
-    app,
-    authority=os.environ['AUTHORITY'],
-    client_id=os.environ['CLIENT_ID'],
-    client_credential=os.environ['CLIENT_SECRET'],
-    redirect_uri=os.environ['REDIRECT_URI'],  # http://localhost:5173/auth/callback
-    post_logout_view=logoutapp
-)
-_DATABASE_URL = os.getenv('NEON_URL')
-
-'''
-methods:
-- add_officer: creates an officer in the officer_table
-- add_club: creates a club in the club_table
-- add_post: 
-- index(): main place; get the top 3 entries in the post table
-
-'''
 
 # Database connection
 def get_db_connection():
     '''Create and return a database connection'''
     conn = psycopg2.connect(_DATABASE_URL, sslmode="require")
     return conn
-
 
 
 # Displaying posts API

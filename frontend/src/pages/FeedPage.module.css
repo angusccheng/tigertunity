@@ -28,6 +28,8 @@
 @media (min-width: 768px) {
   .sidebar {
     grid-column: span 3 / span 3;
+    position: sticky;
+    top: 1.5rem;
   }
 }
 
@@ -123,7 +125,7 @@
 
 /* Post Card */
 .postCard {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   border-radius: 1rem;
   border: 1px solid #e5e5e5;
@@ -184,7 +186,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem 0.25rem;
+  gap: 1rem;
   font-size: 0.875rem;
   color: #525252;
 }
@@ -198,7 +200,6 @@
 .postType {
   font-size: 0.75rem;
   color: #ff9000;
-  text-decoration: underline;
 }
 
 /* Floating Create Button */

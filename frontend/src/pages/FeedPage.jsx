@@ -60,7 +60,7 @@ export default function FeedPage() {
       const response = await createPost(form);
       const created = response.entry;
       console.log(created);
-      setPosts((prev) => [created, ...prev].slice(0, 5));
+      setPosts((prev) => [created, ...prev].slice(0, 20));
       setForm({
         post_title: "",
         club_name: "",
@@ -147,8 +147,9 @@ export default function FeedPage() {
                 <div className={styles.postContent}>
                   <h3 className={styles.postTitle}>{p.post_title}</h3>
                   <div className={styles.postMeta}>
-                    <span>{p.club_name}</span>
-                    <span>{p.officer_name}</span>
+                    <span> <strong> Club: </strong> {p.club_name}</span>
+                    <span> <strong> Officer: </strong> {p.officer_name}</span>
+                    {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
                   </div>
                 </div>
                 <div>
@@ -295,10 +296,10 @@ export default function FeedPage() {
               <div className={styles.readModalMain}>
                 <div className={styles.readModalMeta}>
                   <p>
-                    <span className={styles.readModalMetaText}>{selected.club_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
                   </p>
                   <p>
-                    <span className={styles.readModalMetaText}>{selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
                   </p>
                 </div>
                 <p className={styles.readModalDate}>

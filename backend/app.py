@@ -177,10 +177,18 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
-    """Get all posts, limited to 5 most recent"""
+    """Get all posts, limited to 20 most recent"""
     try:
-        posts = database.get_all_posts(limit=5, order_by='post_time', order_desc=True)
+        posts = database.get_all_posts(limit=20, order_by='post_time', order_desc=True)
         posts_dict = [model_to_dict(post) for post in posts]
+        for i, post in enumerate(posts_dict):
+            club_id = post['club_id']
+            officer_id = post['officer_id']
+            club_name = database.get_club_by_id(club_id).club_name
+            officer_name = database.get_officer_by_id(officer_id).officer_name
+            posts_dict[i]['club_name'] = club_name
+            posts_dict[i]['officer_name'] = officer_name
+            posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -202,29 +210,51 @@ def create_post():
         if not all([post_title, club_name, officer_name, post_content, post_type]):
             return flask.jsonify({'error': 'Missing required fields'}), 400
         
-        club_id = database.get_club_by_name(club_name)
-        officer_id = database.get_officer_by_name(officer_name)
-        if club_id is None:
-            database.create_club(club_name)
-            club_id = database.get_club_by_name(club_name).club_id
-        if officer_id is None:
-            database.create_officer(officer_name, associated_posts=[], officer_clubs=[club_id], saved_posts=[], saved_clubs=[])
-            officer_id = database.get_officer_by_name(officer_name).officer_id
+        # Look up related records and ensure we have actual IDs (not model objects)
+        club = database.get_club_by_name(club_name)
+        if club is None:
+            club = database.create_club(club_name)
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            officer = database.create_officer(
+                officer_name,
+                associated_posts=[],
+                officer_clubs=[club.club_id],
+                saved_posts=[],
+                saved_clubs=[]
+            )
         
         # Create the post using SQLAlchemy
         post = database.create_post(
             post_title=post_title,
-            club_id=club_id,
-            officer_id=officer_id,
+            club_id=club.club_id,
+            officer_id=officer.officer_id,
             post_content=post_content,
             post_type=post_type
         )
-        database.add_post_to_officer(officer_id, post.post_id)
-        database.add_post_to_club(club_id, post.post_id)
+        database.add_post_to_officer(officer.officer_id, post.post_id)
+        # database.add_post_to_club(club_id, post.post_id)
         
+        # Build base entry from model
+        entry = model_to_dict(post)
+        # Enrich with related names (guard failures so core response still works)
+        try:
+            club = database.get_club_by_id(entry.get('club_id'))
+            if club is not None:
+                entry['club_name'] = getattr(club, 'club_name', None)
+        except Exception:
+            pass
+        try:
+            officer = database.get_officer_by_id(entry.get('officer_id'))
+            if officer is not None:
+                entry['officer_name'] = getattr(officer, 'officer_name', None)
+        except Exception:
+            pass
+
         return flask.jsonify({
             'message': 'Post created successfully',
-            'entry': model_to_dict(post)
+            'entry': entry
+
         })
                 
     except Exception as e:
@@ -239,7 +269,21 @@ def get_post(post_id):
         post = database.get_post_by_id(post_id)
         if post is None:
             return flask.jsonify({'error': 'Post not found'}), 404
-        return flask.jsonify(model_to_dict(post))
+        entry = model_to_dict(post)
+        try:
+            club = database.get_club_by_id(entry.get('club_id'))
+            if club is not None:
+                entry['club_name'] = getattr(club, 'club_name', None)
+        except Exception:
+            pass
+        try:
+            officer = database.get_officer_by_id(entry.get('officer_id'))
+            if officer is not None:
+                entry['officer_name'] = getattr(officer, 'officer_name', None)
+        except Exception:
+            pass
+        entry['timestamp'] = entry.get('post_time')
+        return flask.jsonify(entry)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 

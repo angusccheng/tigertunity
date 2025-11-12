@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost } from "../features/postApi.js";
 import { refreshAccessIfNeeded } from "../auth.js";
 import Header from "../components/Header.jsx";
+import styles from "./FeedPage.module.css";
 
 // Post type options
 const POST_TYPES = ["Event", "Application", "Deadline", "Social", "Speaker"];
@@ -91,26 +92,21 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+    <div className={styles.pageContainer}>
       <Header />
 
       {/* Main */}
-      <main className="mx-auto grid max-w-7xl grid-cols-12 gap-6 px-4 py-6">
+      <main className={styles.mainContent}>
         {/* Sidebar */}
-        <aside className="col-span-12 h-fit rounded-2xl border bg-white p-4 text-sm shadow-sm md:col-span-3">
-          <h2 className="mb-3 text-sm font-semibold text-neutral-700">Filters</h2>
-          <div className="space-y-4">
+        <aside className={styles.sidebar}>
+          <h2 className={styles.sidebarTitle}>Filters</h2>
+          <div className={styles.filterSection}>
             {/* Post Filters */}
-            <section>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Post Filters
-              </div>
-              <div className="flex flex-wrap gap-2">
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>Post Filters</div>
+              <div className={styles.filterTags}>
                 {["Events", "Applications", "Deadlines", "Speaker", "Social"].map((t) => (
-                  <span
-                    key={t}
-                    className="select-none rounded-full border border-orange-300/60 bg-orange-50 px-3 py-1 text-xs text-orange-700"
-                  >
+                  <span key={t} className={styles.postFilterTag}>
                     {t}
                   </span>
                 ))}
@@ -118,16 +114,11 @@ export default function FeedPage() {
             </section>
 
             {/* Club Filters */}
-            <section>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Club Filters
-              </div>
-              <div className="flex flex-wrap gap-2">
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>Club Filters</div>
+              <div className={styles.filterTags}>
                 {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"].map((t) => (
-                  <span
-                    key={t}
-                    className="select-none rounded-full border px-3 py-1 text-xs text-neutral-700"
-                  >
+                  <span key={t} className={styles.clubFilterTag}>
                     {t}
                   </span>
                 ))}
@@ -137,41 +128,31 @@ export default function FeedPage() {
         </aside>
 
         {/* Feed */}
-        <section className="col-span-12 space-y-4 md:col-span-9">
-          <div className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
-            <span className="rounded-md border bg-white px-2 py-1 shadow-sm">
-              {new Date().toLocaleDateString()}
-            </span>
-            <button
-              type="button"
-              className="rounded-md bg-[#FF9000] px-2 py-1 font-medium text-white shadow-sm hover:brightness-110"
-            >
+        <section className={styles.feedSection}>
+          <div className={styles.feedHeader}>
+            <span className={styles.dateBadge}>{new Date().toLocaleDateString()}</span>
+            <button type="button" className={styles.sortButton}>
               Sort by post date
             </button>
           </div>
 
           {posts.map((p) => (
-            <article
-              key={p.post_id}
-              className="group mb-4 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-[#FF9000]/40"
-            >
+            <article key={p.post_id} className={styles.postCard}>
               <button
                 type="button"
                 onClick={() => setSelected(p)}
-                className="grid w-full grid-cols-[48px_1fr_auto] items-center gap-4 p-4 text-left transition-colors hover:bg-[#FFF3E0] focus:outline-none"
+                className={styles.postButton}
               >
-                <div className="h-12 w-12 rounded-full bg-neutral-200" />
-                <div className="min-w-0">
-                  <h3 className="truncate text-base font-semibold text-neutral-900">
-                    {p.post_title}
-                  </h3>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600">
-                    <span className="truncate">{p.club_name}</span>
-                    <span className="truncate">{p.officer_name}</span>
+                <div className={styles.postAvatar} />
+                <div className={styles.postContent}>
+                  <h3 className={styles.postTitle}>{p.post_title}</h3>
+                  <div className={styles.postMeta}>
+                    <span>{p.club_name}</span>
+                    <span>{p.officer_name}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {p.post_type && <span className="text-xs text-[#FF9000] underline">{p.post_type}</span>}
+                <div>
+                  {p.post_type && <span className={styles.postType}>{p.post_type}</span>}
                 </div>
               </button>
             </article>
@@ -183,29 +164,24 @@ export default function FeedPage() {
       <button
         type="button"
         onClick={() => setComposerOpen(true)}
-        className="fixed bottom-6 right-6 z-20 inline-flex items-center gap-2 rounded-full bg-[#FF9000] px-6 py-3 text-sm font-medium text-white shadow-lg transition-transform hover:scale-105 focus:outline-none"
+        className={styles.createButton}
         title="Create Post"
       >
-        <span className="text-2xl leading-none">＋</span>
+        <span className={styles.createButtonIcon}>＋</span>
         <span>Create Post</span>
       </button>
 
       {/* Create Post Overlay */}
       {composerOpen && (
-        <div
-          id="create-modal"
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-30 flex items-start justify-center px-4 py-10"
-        >
-          <div className="absolute inset-0 bg-black/40" onClick={() => setComposerOpen(false)} />
-          <div className="relative z-10 w-full max-w-3xl rounded-2xl border bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <h2 className="text-xl font-semibold text-neutral-900">Create New Post</h2>
+        <div id="create-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
+          <div className={styles.modalBackdrop} onClick={() => setComposerOpen(false)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Create New Post</h2>
               <button
                 type="button"
                 onClick={() => setComposerOpen(false)}
-                className="rounded-full border px-2 py-1 text-sm"
+                className={styles.closeButton}
                 aria-label="Close"
               >
                 ✕
@@ -213,12 +189,11 @@ export default function FeedPage() {
             </div>
 
             {/* Full Create Form */}
-            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onSubmit}>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Post Title</label>
+            <form className={styles.form} onSubmit={onSubmit}>
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Title</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_title ? "border-red-400" : "border-neutral-300"
-                    }`}
+                  className={[styles.formInput, errors.post_title ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.post_title}
                   onChange={(e) => setForm({ ...form, post_title: e.target.value })}
                   placeholder="e.g., Robotics Club Call for Members"
@@ -226,10 +201,9 @@ export default function FeedPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Club Name</label>
+                <label className={styles.formLabel}>Club Name</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.club_name ? "border-red-400" : "border-neutral-300"
-                    }`}
+                  className={[styles.formInput, errors.club_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.club_name}
                   onChange={(e) => setForm({ ...form, club_name: e.target.value })}
                   placeholder="e.g., Princeton Robotics Club"
@@ -237,10 +211,9 @@ export default function FeedPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Officer Name</label>
+                <label className={styles.formLabel}>Officer Name</label>
                 <input
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.officer_name ? "border-red-400" : "border-neutral-300"
-                    }`}
+                  className={[styles.formInput, errors.officer_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.officer_name}
                   onChange={(e) => setForm({ ...form, officer_name: e.target.value })}
                   placeholder="e.g., Jane Doe"
@@ -248,10 +221,9 @@ export default function FeedPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Post Type</label>
+                <label className={styles.formLabel}>Post Type</label>
                 <select
-                  className={`w-full appearance-none rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_type ? "border-red-400" : "border-neutral-300"
-                    }`}
+                  className={[styles.formSelect, errors.post_type ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.post_type}
                   onChange={(e) => setForm({ ...form, post_type: e.target.value })}
                 >
@@ -263,19 +235,18 @@ export default function FeedPage() {
                 </select>
               </div>
 
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-neutral-600">Post Content</label>
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Content</label>
                 <textarea
                   rows={4}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FF9000] ${errors.post_content ? "border-red-400" : "border-neutral-300"
-                    }`}
+                  className={[styles.formTextarea, errors.post_content ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.post_content}
                   onChange={(e) => setForm({ ...form, post_content: e.target.value })}
                   placeholder="Add event details, dates, links, etc."
                 />
               </div>
 
-              <div className="md:col-span-2 flex justify-end gap-2">
+              <div className={styles.formActions}>
                 <button
                   type="button"
                   onClick={() =>
@@ -287,14 +258,14 @@ export default function FeedPage() {
                       post_type: "Event",
                     })
                   }
-                  className="rounded-lg border px-4 py-2 text-sm"
+                  className={styles.clearButton}
                 >
                   Clear
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-lg bg-[#FF9000] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:brightness-110"
+                  className={styles.submitButton}
                 >
                   {submitting ? "Creating…" : "Create Post"}
                 </button>
@@ -306,60 +277,53 @@ export default function FeedPage() {
 
       {/* Read Modal */}
       {selected && (
-        <div
-          id="post-modal"
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-30 flex items-start justify-center px-4 py-10"
-        >
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSelected(null)} />
-          <div className="relative z-10 w-full max-w-3xl rounded-2xl border bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <h2 className="text-xl font-semibold text-neutral-900">{selected.post_title}</h2>
+        <div id="post-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
+          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
+          <div className={styles.readModalContent}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-full border px-2 py-1 text-sm"
+                className={styles.closeButton}
               >
                 ✕
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-6 text-sm text-neutral-700">
-              <div className="col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-neutral-600">
+            <div className={styles.readModalGrid}>
+              <div className={styles.readModalMain}>
+                <div className={styles.readModalMeta}>
                   <p>
-                    <span className="font-medium text-neutral-800">{selected.club_name}</span>
+                    <span className={styles.readModalMetaText}>{selected.club_name}</span>
                   </p>
                   <p>
-                    <span className="font-medium text-neutral-800">{selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}>{selected.officer_name}</span>
                   </p>
                 </div>
-                <p className="text-xs text-neutral-500">
-                  {selected.createdAt ? new Date(selected.createdAt).toLocaleString() : ""}
+                <p className={styles.readModalDate}>
+                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
                 </p>
-                <p className="leading-6 text-neutral-700 whitespace-pre-wrap">
-                  {selected.post_content}
-                </p>
+                <p className={styles.readModalContentText}>{selected.post_content}</p>
               </div>
 
-              <aside className="col-span-1 flex flex-col justify-between">
-                <div className="space-y-2 text-right text-xs text-neutral-500">
+              <aside className={styles.readModalSidebar}>
+                <div className={styles.readModalType}>
                   <p>Type:</p>
-                  <p className="text-neutral-700">{selected.post_type}</p>
+                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className={styles.readModalActions}>
                   <button
                     type="button"
                     onClick={() => setSelected(null)}
-                    className="rounded-xl border px-4 py-2 text-sm"
+                    className={styles.closeModalButton}
                   >
                     Close
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(selected)}
-                    className="rounded-xl bg-red-500 px-4 py-2 text-white shadow-sm hover:brightness-110"
+                    className={styles.deleteButton}
                   >
                     Delete
                   </button>
@@ -372,4 +336,3 @@ export default function FeedPage() {
     </div>
   );
 }
-

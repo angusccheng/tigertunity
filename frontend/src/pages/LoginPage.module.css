@@ -1,0 +1,78 @@
+/* LoginPage.module.css */
+.pageContainer {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #fafafa, #f5f5f5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 0 1rem;
+}
+
+.logoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.logoIcon {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 0.125rem;
+  background: #ff9000;
+}
+
+.logoTitle {
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.logoTitleMain {
+  color: #171717;
+}
+
+.logoTitleAccent {
+  color: #ff9000;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: #525252;
+}
+
+.loginButton {
+  border-radius: 0.5rem;
+  background: #ff9000;
+  padding: 0.75rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, filter 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.loginButton:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.loginButton:focus {
+  outline: 2px solid #ff9000;
+  outline-offset: 2px;
+}
+

@@ -1,8 +1,11 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { refreshAccessIfNeeded } from "./auth.js";
+import LoginPage from "./pages/LoginPage.jsx";
 import FeedPage from "./pages/FeedPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import LogoutPage from "./pages/LogoutPage.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 export default function App() {
   // refresh access token every ~25 minutes
@@ -12,11 +15,25 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<FeedPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <FeedPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/logout" element={<LogoutPage />} />
+    </Routes>
   );
 }

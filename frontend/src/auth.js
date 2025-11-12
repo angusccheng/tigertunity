@@ -13,27 +13,73 @@ export function getRefresh() { return sessionStorage.getItem("tt_refresh"); }
 export async function exchangeNonceIfPresent() {
   const url = new URL(window.location.href);
   const nonce = url.searchParams.get("nonce");
-  if (!nonce) return false;
-  const r = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/gettokens?nonce=${encodeURIComponent(nonce)}`);
-  const data = await r.json();
-  if (r.ok) {
-    saveTokens(data);
-    url.searchParams.delete("nonce");
-    window.history.replaceState({}, "", url.toString());
-    return true;
+  if (!nonce) {
+    console.log('No nonce in URL');
+    return false;
   }
-  console.error("Nonce exchange failed:", data);
-  return false;
+  
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const tokenUrl = `${backendUrl}/api/gettokens?nonce=${encodeURIComponent(nonce)}`;
+  console.log('Exchanging nonce at:', tokenUrl);
+  
+  try {
+    const r = await fetch(tokenUrl);
+    console.log('Response status:', r.status, r.statusText);
+    
+    if (!r.ok) {
+      const text = await r.text();
+      console.error("Nonce exchange failed:", r.status, text);
+      alert(`Login failed: ${r.status} ${r.statusText}. Check console for details.`);
+      return false;
+    }
+    
+    const tokens = await r.json();
+    console.log('Received tokens:', tokens);
+    
+    // Backend returns [username, accesstoken, refreshtoken] as an array
+    if (Array.isArray(tokens) && tokens.length === 3) {
+      saveTokens({ username: tokens[0], access: tokens[1], refresh: tokens[2] });
+      console.log('Tokens saved, user:', tokens[0]);
+      url.searchParams.delete("nonce");
+      window.history.replaceState({}, "", url.toString());
+      return true;
+    }
+    
+    console.error("Unexpected token format:", tokens);
+    return false;
+  } catch (error) {
+    console.error("Error fetching tokens:", error);
+    alert(`Network error during login: ${error.message}`);
+    return false;
+  }
 }
 
 export async function refreshAccessIfNeeded() {
   // simple timed refresh every 25 minutes
   const refresh = getRefresh();
   if (!refresh) return;
-  await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/refreshaccesstoken`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${refresh}` }
-  }).then(r => r.json()).then(d => {
-    if (d.access) sessionStorage.setItem("tt_access", d.access);
-  });
+  
+  try {
+    const r = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/refreshaccesstoken`, {
+      method: "POST",
+      headers: { 
+        Authorization: `Bearer ${refresh}`,
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (r.status !== 200) {
+      return;
+    }
+    
+    const accesstoken = await r.json();
+    // Backend returns the access token directly as a string
+    if (accesstoken) {
+      sessionStorage.setItem("tt_access", accesstoken);
+    }
+  } catch (err) {
+    // Silently fail on refresh errors
+    return;
+  }
 }

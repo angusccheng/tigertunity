@@ -1,0 +1,512 @@
+/* FeedPage.module.css */
+.pageContainer {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #fafafa, #f5f5f5);
+}
+
+.mainContent {
+  margin: 0 auto;
+  max-width: 80rem;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem 1rem;
+}
+
+/* Sidebar */
+.sidebar {
+  grid-column: span 12 / span 12;
+  height: fit-content;
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 1rem;
+  font-size: 0.875rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    grid-column: span 3 / span 3;
+  }
+}
+
+.sidebarTitle {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #404040;
+}
+
+.filterSection {
+  margin-bottom: 1rem;
+}
+
+.filterLabel {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #737373;
+}
+
+.filterTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.postFilterTag {
+  user-select: none;
+  border-radius: 9999px;
+  border: 1px solid rgba(253, 186, 116, 0.6);
+  background: #fff7ed;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: #9a3412;
+}
+
+.clubFilterTag {
+  user-select: none;
+  border-radius: 9999px;
+  border: 1px solid #e5e5e5;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: #404040;
+}
+
+/* Feed Section */
+.feedSection {
+  grid-column: span 12 / span 12;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .feedSection {
+    grid-column: span 9 / span 9;
+  }
+}
+
+.feedHeader {
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.dateBadge {
+  border-radius: 0.375rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 0.25rem 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.sortButton {
+  border-radius: 0.375rem;
+  background: #ff9000;
+  padding: 0.25rem 0.5rem;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: filter 0.2s;
+}
+
+.sortButton:hover {
+  filter: brightness(1.1);
+}
+
+/* Post Card */
+.postCard {
+  margin-bottom: 1rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.postCard:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 144, 0, 0.4);
+}
+
+.postButton {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  text-align: left;
+  transition: background-color 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.postButton:hover {
+  background: #fff3e0;
+}
+
+.postButton:focus {
+  outline: none;
+}
+
+.postAvatar {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+  background: #e5e5e5;
+}
+
+.postContent {
+  min-width: 0;
+}
+
+.postTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #171717;
+}
+
+.postMeta {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 0.25rem;
+  font-size: 0.875rem;
+  color: #525252;
+}
+
+.postMeta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.postType {
+  font-size: 0.75rem;
+  color: #ff9000;
+  text-decoration: underline;
+}
+
+/* Floating Create Button */
+.createButton {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: #ff9000;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.createButton:hover {
+  transform: scale(1.05);
+}
+
+.createButton:focus {
+  outline: none;
+}
+
+.createButtonIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modalContent {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 48rem;
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modalHeader {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #171717;
+}
+
+.closeButton {
+  border-radius: 9999px;
+  border: 1px solid #e5e5e5;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background: none;
+  border: 1px solid #e5e5e5;
+  cursor: pointer;
+}
+
+/* Form */
+.form {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.formFieldFull {
+  grid-column: span 1 / span 1;
+}
+
+@media (min-width: 768px) {
+  .formFieldFull {
+    grid-column: span 2 / span 2;
+  }
+}
+
+.formLabel {
+  margin-bottom: 0.25rem;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #525252;
+}
+
+.formInput {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.formInput:focus {
+  outline: 2px solid #ff9000;
+  outline-offset: 2px;
+}
+
+.formInputError {
+  border-color: #f87171;
+}
+
+.formTextarea {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.formTextarea:focus {
+  outline: 2px solid #ff9000;
+  outline-offset: 2px;
+}
+
+.formSelect {
+  width: 100%;
+  appearance: none;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.formSelect:focus {
+  outline: 2px solid #ff9000;
+  outline-offset: 2px;
+}
+
+.formActions {
+  grid-column: span 1 / span 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .formActions {
+    grid-column: span 2 / span 2;
+  }
+}
+
+.clearButton {
+  border-radius: 0.5rem;
+  border: 1px solid #e5e5e5;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: white;
+  cursor: pointer;
+}
+
+.submitButton {
+  border-radius: 0.5rem;
+  background: #ff9000;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  transition: filter 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.submitButton:hover {
+  filter: brightness(1.1);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Read Modal */
+.readModalContent {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 48rem;
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.readModalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: #404040;
+}
+
+.readModalMain {
+  grid-column: span 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.readModalMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  color: #525252;
+}
+
+.readModalMetaText {
+  font-weight: 500;
+  color: #262626;
+}
+
+.readModalDate {
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.readModalContentText {
+  line-height: 1.5rem;
+  color: #404040;
+  white-space: pre-wrap;
+}
+
+.readModalSidebar {
+  grid-column: span 1 / span 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.readModalType {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: right;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.readModalTypeValue {
+  color: #404040;
+}
+
+.readModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.closeModalButton {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e5e5;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: white;
+  cursor: pointer;
+}
+
+.deleteButton {
+  border-radius: 0.75rem;
+  background: #ef4444;
+  padding: 0.5rem 1rem;
+  color: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: filter 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  filter: brightness(1.1);
+}
+

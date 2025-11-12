@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
+import styles from "./ProfilePage.module.css";
 
 export default function ProfilePage() {
   const user = getUser();
@@ -15,91 +16,80 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+    <div className={styles.pageContainer}>
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className={styles.mainContent}>
         {/* Page Title */}
-        <h1 className="mb-6 text-sm font-medium text-neutral-400">Student Profile</h1>
+        <h1 className={styles.pageTitle}>Student Profile</h1>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className={styles.grid}>
           {/* Left Column - Profile Info */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className={styles.profileColumn}>
             {/* User Profile Section */}
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <div className="flex items-start gap-4">
+            <div className={styles.profileCard}>
+              <div className={styles.profileHeader}>
                 {/* Profile Picture Placeholder */}
-                <div className="h-24 w-24 rounded-full bg-neutral-200 flex-shrink-0" />
+                <div className={styles.profileAvatar} />
                 
                 {/* User Info */}
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-neutral-900">
+                <div className={styles.profileInfo}>
+                  <h2 className={styles.profileName}>
                     {user || "Username"}
                   </h2>
-                  <p className="mt-1 text-base text-neutral-700">Class of 2027</p>
+                  <p className={styles.profileClass}>Class of 2027</p>
                 </div>
               </div>
 
               {/* Filters Placeholder */}
-              <div className="mt-6 space-y-4">
-                <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-sm text-neutral-500">
+              <div className={styles.filtersPlaceholder}>
+                <div className={styles.placeholderBox}>
                   <p>add 'type' filters</p>
-                  <p className="mt-1">add club filters</p>
+                  <p className={styles.placeholderText}>add club filters</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Column - Saved Events */}
-          <div className="lg:col-span-1">
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-lg font-bold text-neutral-900">Saved Events</h2>
+          <div className={styles.savedEventsColumn}>
+            <div className={styles.savedEventsCard}>
+              <h2 className={styles.savedEventsTitle}>Saved Events</h2>
 
               {/* Sorting Options */}
-              <div className="mb-4 flex gap-2">
+              <div className={styles.sortButtons}>
                 <button
                   type="button"
                   onClick={() => setSortBy("post-date")}
-                  className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    sortBy === "post-date"
-                      ? "bg-[#FF9000] text-white"
-                      : "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                  }`}
+                  className={sortBy === "post-date" ? styles.sortButtonActive : styles.sortButtonInactive}
                 >
                   Sort by post date
                 </button>
                 <button
                   type="button"
                   onClick={() => setSortBy("event-date")}
-                  className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                    sortBy === "event-date"
-                      ? "bg-[#FF9000] text-white"
-                      : "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                  }`}
+                  className={sortBy === "event-date" ? styles.sortButtonActive : styles.sortButtonInactive}
                 >
                   Sort by event date
                 </button>
               </div>
 
               {/* Event List */}
-              <div className="space-y-3">
+              <div className={styles.eventsList}>
                 {savedEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-3 hover:border-neutral-300 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-neutral-600">Subject:</p>
-                      <p className="text-sm font-medium text-neutral-900">{event.subject}</p>
-                      <p className="mt-1 text-sm text-neutral-700">{event.content}</p>
+                  <div key={event.id} className={styles.eventItem}>
+                    <div className={styles.eventContent}>
+                      <p className={styles.eventLabel}>Subject:</p>
+                      <p className={styles.eventSubject}>{event.subject}</p>
+                      <p className={styles.eventText}>{event.content}</p>
                     </div>
                     <button
                       type="button"
-                      className="ml-2 flex-shrink-0 text-neutral-400 hover:text-neutral-600"
+                      className={styles.expandButton}
                       aria-label="Expand event"
                     >
                       <svg
-                        className="h-5 w-5"
+                        className={styles.expandIcon}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -122,4 +112,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

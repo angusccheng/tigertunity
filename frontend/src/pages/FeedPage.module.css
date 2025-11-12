@@ -28,6 +28,8 @@
 @media (min-width: 768px) {
   .sidebar {
     grid-column: span 3 / span 3;
+    position: sticky;
+    top: 1.5rem;
   }
 }
 

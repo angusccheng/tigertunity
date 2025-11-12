@@ -149,6 +149,7 @@ export default function FeedPage() {
                   <div className={styles.postMeta}>
                     <span> <strong> Club: </strong> {p.club_name}</span>
                     <span> <strong> Officer: </strong> {p.officer_name}</span>
+                    {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
                   </div>
                 </div>
                 <div>

@@ -188,6 +188,7 @@ def list_posts():
             officer_name = database.get_officer_by_id(officer_id).officer_name
             posts_dict[i]['club_name'] = club_name
             posts_dict[i]['officer_name'] = officer_name
+            posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -250,7 +251,7 @@ def create_post():
         except Exception:
             pass
         # Alias for frontend modal which expects timestamp
-        #entry['timestamp'] = entry.get('post_time')
+        entry['timestamp'] = entry.get('post_time')
 
         return flask.jsonify({
             'message': 'Post created successfully',
@@ -283,7 +284,7 @@ def get_post(post_id):
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
         except Exception:
             pass
-        #entry['timestamp'] = entry.get('post_time')
+        entry['timestamp'] = entry.get('post_time')
         return flask.jsonify(entry)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

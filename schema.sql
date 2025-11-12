@@ -37,3 +37,9 @@ CREATE TABLE club_table (
   vice_president INTEGER,
   treasurer INTEGER
 )
+
+CREATE TABLE nonces (
+    nonce VARCHAR NOT NULL,
+    username VARCHAR,
+    PRIMARY KEY (nonce)
+);

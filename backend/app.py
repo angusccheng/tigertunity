@@ -177,9 +177,9 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
-    """Get all posts, limited to 10 most recent"""
+    """Get all posts, limited to 20 most recent"""
     try:
-        posts = database.get_all_posts(limit=10, order_by='post_time', order_desc=True)
+        posts = database.get_all_posts(limit=20, order_by='post_time', order_desc=True)
         posts_dict = [model_to_dict(post) for post in posts]
         for i, post in enumerate(posts_dict):
             club_id = post['club_id']

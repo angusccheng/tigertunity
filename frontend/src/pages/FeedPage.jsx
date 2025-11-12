@@ -60,7 +60,7 @@ export default function FeedPage() {
       const response = await createPost(form);
       const created = response.entry;
       console.log(created);
-      setPosts((prev) => [created, ...prev]);
+      setPosts((prev) => [created, ...prev].slice(0, 20));
       setForm({
         post_title: "",
         club_name: "",

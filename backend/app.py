@@ -250,8 +250,6 @@ def create_post():
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
         except Exception:
             pass
-        # Alias for frontend modal which expects timestamp
-        entry['timestamp'] = entry.get('post_time')
 
         return flask.jsonify({
             'message': 'Post created successfully',

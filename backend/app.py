@@ -177,10 +177,17 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
-    """Get all posts, limited to 5 most recent"""
+    """Get all posts, limited to 10 most recent"""
     try:
-        posts = database.get_all_posts(limit=5, order_by='post_time', order_desc=True)
+        posts = database.get_all_posts(limit=10, order_by='post_time', order_desc=True)
         posts_dict = [model_to_dict(post) for post in posts]
+        for i, post in enumerate(posts_dict):
+            club_id = post['club_id']
+            officer_id = post['officer_id']
+            club_name = database.get_club_by_id(club_id).club_name
+            officer_name = database.get_officer_by_id(officer_id).officer_name
+            posts_dict[i]['club_name'] = club_name
+            posts_dict[i]['officer_name'] = officer_name
         return flask.jsonify(posts_dict)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -220,11 +227,12 @@ def create_post():
             post_type=post_type
         )
         database.add_post_to_officer(officer_id, post.post_id)
-        database.add_post_to_club(club_id, post.post_id)
+        # database.add_post_to_club(club_id, post.post_id)
         
         return flask.jsonify({
             'message': 'Post created successfully',
             'entry': model_to_dict(post)
+
         })
                 
     except Exception as e:

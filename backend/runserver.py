@@ -1,29 +1,10 @@
-import argparse
-import sys
+import os
 import app
 
-def create_parser():
-    parser = argparse.ArgumentParser(
-        description="The TigerTunity application"
-    )
-    parser.add_argument("port",
-                        type=int,
-                        help="the port at which the server should"
-                        +" listen")
-    return parser
-
-def print_error(ex):
-    print(f"{sys.argv[0]}:", ex, file=sys.stderr)
-
 def main():
-    parser = create_parser()
-    args = parser.parse_args()
+    port = int(os.environ.get("PORT", 5000))
 
-    try:
-        app.app.run(host='0.0.0.0', port=args.port, debug=True)
-    except Exception as ex:
-        print_error(ex)
-        sys.exit(1)
+    app.app.run(host='0.0.0.0', port=port, debug=True)
 
 if __name__ == "__main__":
     main()

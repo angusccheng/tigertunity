@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost } from "../features/postApi.js";
-import { refreshAccessIfNeeded } from "../auth.js";
+import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 
@@ -12,10 +12,11 @@ export default function FeedPage() {
   const [selected, setSelected] = useState(null); // read modal
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
+  const user = getUser(); // Get logged-in user's NetID
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
-    officer_name: "",
+    officer_name: user || "", // Auto-populate with NetID
     post_content: "",
     post_type: "Event",
   });
@@ -64,7 +65,7 @@ export default function FeedPage() {
       setForm({
         post_title: "",
         club_name: "",
-        officer_name: "",
+        officer_name: user || "", // Keep NetID populated
         post_content: "",
         post_type: "Event",
       });
@@ -212,16 +213,6 @@ export default function FeedPage() {
               </div>
 
               <div>
-                <label className={styles.formLabel}>Officer Name</label>
-                <input
-                  className={[styles.formInput, errors.officer_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                  value={form.officer_name}
-                  onChange={(e) => setForm({ ...form, officer_name: e.target.value })}
-                  placeholder="e.g., Jane Doe"
-                />
-              </div>
-
-              <div>
                 <label className={styles.formLabel}>Post Type</label>
                 <select
                   className={[styles.formSelect, errors.post_type ? styles.formInputError : ""].filter(Boolean).join(" ")}
@@ -254,7 +245,7 @@ export default function FeedPage() {
                     setForm({
                       post_title: "",
                       club_name: "",
-                      officer_name: "",
+                      officer_name: user || "", // Keep NetID populated
                       post_content: "",
                       post_type: "Event",
                     })

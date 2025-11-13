@@ -11,7 +11,7 @@ import urllib.request
 import database
 
 app = flask.Flask(__name__)
-dotenv.load_dotenv('../.env')
+dotenv.load_dotenv()
 
 FRONTEND_URL = os.environ['FRONTEND_URL']
 APP_SECRET_KEY = os.environ['APP_SECRET_KEY']

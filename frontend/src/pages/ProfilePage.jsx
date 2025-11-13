@@ -19,7 +19,7 @@ export default function ProfilePage() {
       }
       try {
         const posts = await fetchSavedPosts(user);
-        setSavedPosts(posts);
+        setSavedPosts(posts.reverse());
       } catch (err) {
         console.error("Failed to load saved posts:", err);
       } finally {

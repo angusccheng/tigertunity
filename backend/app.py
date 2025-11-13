@@ -195,6 +195,93 @@ def list_posts():
 
 #-----------------------------------------------------------------------
 
+#-----------------------------------------------------------------------
+# Clubs API
+#-----------------------------------------------------------------------
+
+@app.route('/api/clubs', methods=['GET'])
+def list_clubs():
+    """Get all clubs"""
+    try:
+        clubs = database.get_all_clubs()
+        clubs_dict = [model_to_dict(c) for c in clubs]
+        return flask.jsonify(clubs_dict)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/clubs/mine', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def list_my_officer_clubs():
+    """Get clubs where the current user is an officer"""
+    try:
+        username = flask_jwt_extended.get_jwt_identity()
+        # Officer names correspond to usernames/netids in this app
+        officer = database.get_officer_by_name(username)
+        if officer is None:
+            return flask.jsonify([])
+        club_ids = officer.officer_clubs or []
+        result = []
+        for cid in club_ids:
+            club = database.get_club_by_id(cid)
+            if club is not None:
+                result.append(model_to_dict(club))
+        return flask.jsonify(result)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/clubs', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def create_club():
+    """Create a new club and add creator as an officer"""
+    try:
+        data = flask.request.get_json() or {}
+        club_name = (data.get('club_name') or '').strip()
+        club_profile = data.get('club_profile') or ''
+        club_type = data.get('club_type') or ''
+        club_filters = data.get('club_filters') or []
+
+        if not club_name:
+            return flask.jsonify({'error': 'Missing club_name'}), 400
+
+        username = flask_jwt_extended.get_jwt_identity()
+
+        # Ensure officer exists for creator
+        officer = database.get_officer_by_name(username)
+        if officer is None:
+            officer = database.create_officer(
+                officer_name=username,
+                saved_posts=[],
+                officer_clubs=[],
+                saved_clubs=[],
+                associated_posts=[]
+            )
+
+        # Prevent duplicate clubs by name
+        existing = database.get_club_by_name(club_name)
+        if existing is not None:
+            return flask.jsonify({'error': 'Club name already exists'}), 409
+
+        club = database.create_club(
+            club_name=club_name,
+            club_profile=club_profile,
+            club_type=club_type,
+            club_filters=club_filters,
+            club_officers=[officer.officer_id],
+            president=officer.officer_id
+        )
+
+        # Link both sides
+        database.add_club_to_officer(officer.officer_id, club.club_id)
+
+        entry = model_to_dict(club)
+        return flask.jsonify({'message': 'Club created successfully', 'entry': entry})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+
 @app.route('/api/posts', methods=['POST'])
 def create_post():
     """Create a new post"""

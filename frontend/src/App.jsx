@@ -6,6 +6,7 @@ import FeedPage from "./pages/FeedPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import LogoutPage from "./pages/LogoutPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import ExploreClubsPage from "./pages/ExploreClubsPage.jsx";
 
 export default function App() {
   // refresh access token every ~25 minutes
@@ -30,6 +31,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clubs"
+        element={
+          <ProtectedRoute>
+            <ExploreClubsPage />
           </ProtectedRoute>
         }
       />

@@ -141,8 +141,12 @@ def get_tokens():
 
     accesstoken = flask_jwt_extended.create_access_token(identity=username)
     refreshtoken = flask_jwt_extended.create_refresh_token(identity=username)
-
-    return flask.jsonify([username, accesstoken, refreshtoken])
+    # Return standardized object instead of array for clarity
+    return flask.jsonify({
+        'username': username,
+        'access': accesstoken,
+        'refresh': refreshtoken
+    })
 
 #-----------------------------------------------------------------------
 
@@ -316,3 +320,191 @@ def delete_post(post_id):
         return flask.jsonify({"message": "Post deleted successfully"})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+# Officer saved clubs API
+#-----------------------------------------------------------------------
+
+@app.route('/api/officers/<string:officer_name>/saved-clubs', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def save_club_to_officer(officer_name):
+    """Save a club to an officer's saved_clubs"""
+    try:
+        # Verify the authenticated user matches the officer_name
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+        
+        data = flask.request.get_json()
+        club_id = data.get('club_id')
+        
+        if not club_id:
+            return flask.jsonify({'error': 'club_id is required'}), 400
+        
+        # Get or create officer
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            officer = database.create_officer(officer_name)
+        
+        # Add club to saved_clubs
+        success = database.add_saved_club_to_officer(officer.officer_id, club_id)
+        
+        if success:
+            return flask.jsonify({'message': 'Club saved successfully'})
+        else:
+            return flask.jsonify({'error': 'Failed to save club'}), 500
+            
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+
+@app.route('/api/officers/<string:officer_name>/saved-clubs/<int:club_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def unsave_club_from_officer(officer_name, club_id):
+    """Remove a club from an officer's saved_clubs"""
+    try:
+        # Verify the authenticated user matches the officer_name
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+        
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'error': 'Officer not found'}), 404
+        
+        success = database.remove_saved_club_from_officer(officer.officer_id, club_id)
+        
+        if success:
+            return flask.jsonify({'message': 'Club unsaved successfully'})
+        else:
+            return flask.jsonify({'error': 'Failed to unsave club'}), 500
+            
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+
+@app.route('/api/officers/<string:officer_name>/saved-clubs', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_saved_clubs_for_officer(officer_name):
+    """Get all saved clubs for an officer"""
+    try:
+        # Verify the authenticated user matches the officer_name
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+        
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify([])  # Return empty list if officer doesn't exist yet
+        
+        saved_club_ids = officer.saved_clubs or []
+        
+        # Fetch full club details
+        clubs = []
+        for club_id in saved_club_ids:
+            club = database.get_club_by_id(club_id)
+            if club is not None:
+                clubs.append(model_to_dict(club))
+        
+        return flask.jsonify(clubs)
+        
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+#-----------------------------------------------------------------------
+# Officer saved posts API (save by post_id)
+#-----------------------------------------------------------------------
+
+@app.route('/api/officers/<string:officer_name>/saved-posts', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def save_post_to_officer(officer_name):
+    """Save a post (by post_id) to an officer's saved_posts"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json()
+        post_id = data.get('post_id')
+        if not post_id:
+            return flask.jsonify({'error': 'post_id is required'}), 400
+
+        # Ensure officer exists
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            officer = database.create_officer(officer_name)
+
+        success = database.add_saved_post_to_officer(officer.officer_id, post_id)
+        if success:
+            return flask.jsonify({'message': 'Post saved successfully'})
+        else:
+            return flask.jsonify({'error': 'Failed to save post'}), 500
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/officers/<string:officer_name>/saved-posts/<int:post_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def unsave_post_from_officer(officer_name, post_id):
+    """Remove a post (by post_id) from an officer's saved_posts"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'error': 'Officer not found'}), 404
+
+        success = database.remove_saved_post_from_officer(officer.officer_id, post_id)
+        if success:
+            return flask.jsonify({'message': 'Post unsaved successfully'})
+        else:
+            return flask.jsonify({'error': 'Failed to unsave post'}), 500
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/officers/<string:officer_name>/saved-posts', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_saved_posts_for_officer(officer_name):
+    """Get all saved posts (with enrichment) for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify([])
+
+        saved_post_ids = officer.saved_posts or []
+        result = []
+        for pid in saved_post_ids:
+            p = database.get_post_by_id(pid)
+            if p is None:
+                continue
+            entry = model_to_dict(p)
+            # Enrich
+            try:
+                club = database.get_club_by_id(entry.get('club_id'))
+                if club is not None:
+                    entry['club_name'] = getattr(club, 'club_name', None)
+            except Exception:
+                pass
+            try:
+                officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+                if officer_obj is not None:
+                    entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+            except Exception:
+                pass
+            entry['timestamp'] = entry.get('post_time')
+            result.append(entry)
+
+        return flask.jsonify(result)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+

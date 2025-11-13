@@ -35,16 +35,24 @@ export async function exchangeNonceIfPresent() {
     
     const tokens = await r.json();
     console.log('Received tokens:', tokens);
-    
-    // Backend returns [username, accesstoken, refreshtoken] as an array
+
+    // Support both legacy array format [username, access, refresh]
+    // and new object format { username, access, refresh }
+    let parsed = null;
     if (Array.isArray(tokens) && tokens.length === 3) {
-      saveTokens({ username: tokens[0], access: tokens[1], refresh: tokens[2] });
-      console.log('Tokens saved, user:', tokens[0]);
+      parsed = { username: tokens[0], access: tokens[1], refresh: tokens[2] };
+    } else if (tokens && typeof tokens === 'object' && tokens.username && tokens.access && tokens.refresh) {
+      parsed = { username: tokens.username, access: tokens.access, refresh: tokens.refresh };
+    }
+
+    if (parsed) {
+      saveTokens(parsed);
+      console.log('Tokens saved, user:', parsed.username);
       url.searchParams.delete("nonce");
       window.history.replaceState({}, "", url.toString());
       return true;
     }
-    
+
     console.error("Unexpected token format:", tokens);
     return false;
   } catch (error) {

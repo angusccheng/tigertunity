@@ -197,9 +197,30 @@
   white-space: nowrap;
 }
 
+.postActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .postType {
   font-size: 0.75rem;
   color: #ff9000;
+}
+
+.saveButton {
+  font-size: 1.5rem;
+  color: #ff9000;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.saveButton:hover {
+  transform: scale(1.2);
 }
 
 /* Floating Create Button */

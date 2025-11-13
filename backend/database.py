@@ -342,6 +342,56 @@ def add_post_to_officer(officer_id, post_id):
         session.commit()
         return True
 
+def add_saved_post_to_officer(officer_id, post_id):
+    """Add a post_id to officer's saved_posts array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None:
+            return False
+        # Create a new list to trigger SQLAlchemy update detection
+        current = officer.saved_posts or []
+        if post_id not in current:
+            officer.saved_posts = current + [post_id]
+            session.commit()
+        return True
+
+def remove_saved_post_from_officer(officer_id, post_id):
+    """Remove a post_id from officer's saved_posts array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None or officer.saved_posts is None:
+            return False
+        # Create a new list to trigger SQLAlchemy update detection
+        current = officer.saved_posts or []
+        if post_id in current:
+            officer.saved_posts = [pid for pid in current if pid != post_id]
+            session.commit()
+        return True
+
+def add_saved_club_to_officer(officer_id, club_id):
+    """Add a club_id to officer's saved_clubs array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None:
+            return False
+        if officer.saved_clubs is None:
+            officer.saved_clubs = []
+        if club_id not in officer.saved_clubs:
+            officer.saved_clubs.append(club_id)
+        session.commit()
+        return True
+
+def remove_saved_club_from_officer(officer_id, club_id):
+    """Remove a club_id from officer's saved_clubs array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None or officer.saved_clubs is None:
+            return False
+        if club_id in officer.saved_clubs:
+            officer.saved_clubs.remove(club_id)
+        session.commit()
+        return True
+
 #-----------------------------------------------------------------------
 # Club operations
 #-----------------------------------------------------------------------

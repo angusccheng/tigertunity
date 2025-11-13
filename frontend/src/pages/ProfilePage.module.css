@@ -217,3 +217,16 @@
   width: 1.25rem;
 }
 
+.loadingText {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #737373;
+  padding: 1rem;
+}
+
+.emptyText {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #737373;
+  padding: 1rem;
+}

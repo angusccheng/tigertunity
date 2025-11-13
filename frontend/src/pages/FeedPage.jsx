@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts } from "../features/postApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
@@ -13,6 +13,7 @@ export default function FeedPage() {
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
+  const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -31,6 +32,20 @@ export default function FeedPage() {
   useEffect(() => {
     (async () => setPosts(await fetchPosts()))();
   }, []);
+
+  // Load saved posts to show star state
+  useEffect(() => {
+    (async () => {
+      if (!user) return;
+      try {
+        const saved = await fetchSavedPosts(user);
+        const ids = new Set(saved.map(p => p.post_id));
+        setSavedPosts(ids);
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, [user]);
 
   // Lock scroll when any modal is open
   useEffect(() => {
@@ -87,6 +102,35 @@ export default function FeedPage() {
       setPosts(latestPosts);
 
       setSelected(null);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleSavePost(postId, e) {
+    e.stopPropagation(); // Prevent opening the post modal
+    if (!user) {
+      alert("Please log in to save posts");
+      return;
+    }
+    try {
+      await savePost(user, postId);
+      setSavedPosts(prev => new Set(prev).add(postId));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleUnsavePost(postId, e) {
+    e.stopPropagation(); // Prevent opening the post modal
+    if (!user) return;
+    try {
+      await unsavePost(user, postId);
+      setSavedPosts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
     } catch (err) {
       console.error(err);
     }
@@ -153,8 +197,20 @@ export default function FeedPage() {
                     {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
                   </div>
                 </div>
-                <div>
+                <div className={styles.postActions}>
                   {p.post_type && <span className={styles.postType}>{p.post_type}</span>}
+                  {user && (
+                    <button
+                      type="button"
+                      onClick={(e) => savedPosts.has(p.post_id)
+                        ? handleUnsavePost(p.post_id, e)
+                        : handleSavePost(p.post_id, e)}
+                      className={styles.saveButton}
+                      title={savedPosts.has(p.post_id) ? "Unsave post" : "Save post"}
+                    >
+                      {savedPosts.has(p.post_id) ? "★" : "☆"}
+                    </button>
+                  )}
                 </div>
               </button>
             </article>

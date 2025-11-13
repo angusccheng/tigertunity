@@ -1,11 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
+import { fetchSavedPosts } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 
 export default function ProfilePage() {
   const user = getUser();
   const [sortBy, setSortBy] = useState("post-date"); // "post-date" or "event-date"
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSavedPosts() {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const posts = await fetchSavedPosts(user);
+        setSavedPosts(posts);
+      } catch (err) {
+        console.error("Failed to load saved posts:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSavedPosts();
+  }, [user]);
 
   // Placeholder data - replace with actual API calls later
   const savedEvents = [
@@ -51,59 +72,49 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Right Column - Saved Events */}
+          {/* Right Column - Saved Posts */}
           <div className={styles.savedEventsColumn}>
             <div className={styles.savedEventsCard}>
-              <h2 className={styles.savedEventsTitle}>Saved Events</h2>
-
-              {/* Sorting Options */}
-              <div className={styles.sortButtons}>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("post-date")}
-                  className={sortBy === "post-date" ? styles.sortButtonActive : styles.sortButtonInactive}
-                >
-                  Sort by post date
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("event-date")}
-                  className={sortBy === "event-date" ? styles.sortButtonActive : styles.sortButtonInactive}
-                >
-                  Sort by event date
-                </button>
-              </div>
+              <h2 className={styles.savedEventsTitle}>Saved Posts</h2>
 
               {/* Event List */}
               <div className={styles.eventsList}>
-                {savedEvents.map((event) => (
-                  <div key={event.id} className={styles.eventItem}>
-                    <div className={styles.eventContent}>
-                      <p className={styles.eventLabel}>Subject:</p>
-                      <p className={styles.eventSubject}>{event.subject}</p>
-                      <p className={styles.eventText}>{event.content}</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.expandButton}
-                      aria-label="Expand event"
-                    >
-                      <svg
-                        className={styles.expandIcon}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                {loading ? (
+                  <p className={styles.loadingText}>Loading...</p>
+                ) : savedPosts.length === 0 ? (
+                  <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
+                ) : (
+                  savedPosts.map((post) => (
+                    <div key={post.post_id} className={styles.eventItem}>
+                      <div className={styles.eventContent}>
+                        <p className={styles.eventLabel}>Post:</p>
+                        <p className={styles.eventSubject}>{post.post_title}</p>
+                        <p className={styles.eventText}>Club: {post.club_name}</p>
+                        {post.post_type && <p className={styles.eventText}>Type: {post.post_type}</p>}
+                        {post.timestamp && <p className={styles.eventText}>Posted: {new Date(post.timestamp).toLocaleString()}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.expandButton}
+                        aria-label="Expand post details"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                        <svg
+                          className={styles.expandIcon}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

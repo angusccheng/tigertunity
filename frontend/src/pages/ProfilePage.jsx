@@ -9,6 +9,7 @@ export default function ProfilePage() {
   const [sortBy, setSortBy] = useState("post-date"); // "post-date" or "event-date"
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null); // for modal
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -85,7 +86,12 @@ export default function ProfilePage() {
                   <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
                 ) : (
                   savedPosts.map((post) => (
-                    <div key={post.post_id} className={styles.eventItem}>
+                    <button
+                      key={post.post_id}
+                      type="button"
+                      onClick={() => setSelected(post)}
+                      className={styles.eventItem}
+                    >
                       <div className={styles.eventContent}>
                         <p className={styles.eventLabel}>Post:</p>
                         <p className={styles.eventSubject}>{post.post_title}</p>
@@ -93,26 +99,7 @@ export default function ProfilePage() {
                         {post.post_type && <p className={styles.eventText}>Type: {post.post_type}</p>}
                         {post.timestamp && <p className={styles.eventText}>Posted: {new Date(post.timestamp).toLocaleString()}</p>}
                       </div>
-                      <button
-                        type="button"
-                        className={styles.expandButton}
-                        aria-label="Expand post details"
-                      >
-                        <svg
-                          className={styles.expandIcon}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -120,6 +107,34 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {selected && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
+          <div className={styles.readModal}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+            <div className={styles.readMeta}>
+              <p><strong>Club:</strong> {selected.club_name}</p>
+              {selected.post_type && <p><strong>Type:</strong> {selected.post_type}</p>}
+              {selected.timestamp && <p><strong>Posted:</strong> {new Date(selected.timestamp).toLocaleString()}</p>}
+            </div>
+            {selected.post_description && (
+              <div className={styles.readDescription}>
+                <p>{selected.post_description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

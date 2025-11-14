@@ -549,9 +549,10 @@
 }
 
 .editButton {
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   background: #ff9000;
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
   color: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition: filter 0.2s;
@@ -564,9 +565,10 @@
 }
 
 .deleteButton {
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   background: #ef4444;
-  padding: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
   color: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition: filter 0.2s;

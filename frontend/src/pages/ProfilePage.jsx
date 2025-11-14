@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
-import { fetchSavedPosts } from "../features/postApi.js";
+import { fetchSavedPosts, unsavePost } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 
 export default function ProfilePage() {
@@ -30,6 +30,18 @@ export default function ProfilePage() {
     }
     loadSavedPosts();
   }, [user]);
+
+  async function handleUnsavePost(postId, e) {
+    e.stopPropagation(); // Prevent opening the post modal
+    if (!user) return;
+    try {
+      await unsavePost(user, postId);
+      // Remove from local state
+      setSavedPosts(prev => prev.filter(p => p.post_id !== postId));
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   // Placeholder data - replace with actual API calls later
   const savedEvents = [
@@ -102,20 +114,29 @@ export default function ProfilePage() {
                   <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
                 ) : (
                   savedPosts.map((post) => (
-                    <button
-                      key={post.post_id}
-                      type="button"
-                      onClick={() => setSelected(post)}
-                      className={styles.eventItem}
-                    >
-                      <div className={styles.eventContent}>
-                        <p className={styles.eventLabel}>Post:</p>
-                        <p className={styles.eventSubject}>{post.post_title}</p>
-                        <p className={styles.eventText}>Club: {post.club_name}</p>
-                        {post.post_type && <p className={styles.eventText}>Type: {post.post_type}</p>}
-                        {post.timestamp && <p className={styles.eventText}>Posted: {new Date(post.timestamp).toLocaleString()}</p>}
-                      </div>
-                    </button>
+                    <div key={post.post_id} className={styles.eventItem}>
+                      <button
+                        type="button"
+                        onClick={() => setSelected(post)}
+                        className={styles.eventButton}
+                      >
+                        <div className={styles.eventContent}>
+                          <p className={styles.eventLabel}>Post:</p>
+                          <p className={styles.eventSubject}>{post.post_title}</p>
+                          <p className={styles.eventText}>Club: {post.club_name}</p>
+                          {post.post_type && <p className={styles.eventText}>Type: {post.post_type}</p>}
+                          {post.timestamp && <p className={styles.eventText}>Posted: {new Date(post.timestamp).toLocaleString()}</p>}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleUnsavePost(post.post_id, e)}
+                        className={styles.saveButton}
+                        title="Unsave post"
+                      >
+                        ★
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -127,7 +148,7 @@ export default function ProfilePage() {
       {selected && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
-          <div className={styles.readModal}>
+          <div className={styles.readModalContent}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{selected.post_title}</h2>
               <button
@@ -138,16 +159,30 @@ export default function ProfilePage() {
                 ✕
               </button>
             </div>
-            <div className={styles.readMeta}>
-              <p><strong>Club:</strong> {selected.club_name}</p>
-              {selected.post_type && <p><strong>Type:</strong> {selected.post_type}</p>}
-              {selected.timestamp && <p><strong>Posted:</strong> {new Date(selected.timestamp).toLocaleString()}</p>}
-            </div>
-            {selected.post_description && (
-              <div className={styles.readDescription}>
-                <p>{selected.post_description}</p>
+
+            <div className={styles.readModalGrid}>
+              <div className={styles.readModalMain}>
+                <div className={styles.readModalMeta}>
+                  <p>
+                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
+                  </p>
+                  <p>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                  </p>
+                </div>
+                <p className={styles.readModalDate}>
+                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
+                </p>
+                <p className={styles.readModalContentText}>{selected.post_description || selected.post_content || ""}</p>
               </div>
-            )}
+
+              <aside className={styles.readModalSidebar}>
+                <div className={styles.readModalType}>
+                  <p>Type:</p>
+                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
+                </div>
+              </aside>
+            </div>
           </div>
         </div>
       )}

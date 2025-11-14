@@ -14,6 +14,9 @@ export default function FeedPage() {
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
+  // Filter states - all selected by default
+  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Deadline", "Speaker", "Social"]));
+  const [activeClubFilters, setActiveClubFilters] = useState(new Set(["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"]));
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -136,6 +139,39 @@ export default function FeedPage() {
     }
   }
 
+  function togglePostFilter(filter) {
+    setActivePostFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filter)) {
+        newSet.delete(filter);
+      } else {
+        newSet.add(filter);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleClubFilter(filter) {
+    setActiveClubFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filter)) {
+        newSet.delete(filter);
+      } else {
+        newSet.add(filter);
+      }
+      return newSet;
+    });
+  }
+
+  // Filter posts based on active filters
+  const filteredPosts = posts.filter(post => {
+    // Check if post type matches active post filters
+    const matchesPostFilter = activePostFilters.has(post.post_type);
+    // For now, club filters are not applied since we don't have club categories in the data
+    // You can add club category logic here when available
+    return matchesPostFilter;
+  });
+
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -150,10 +186,15 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Events", "Applications", "Deadlines", "Speaker", "Social"].map((t) => (
-                  <span key={t} className={styles.postFilterTag}>
+                {["Event", "Application", "Deadline", "Speaker", "Social"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => togglePostFilter(t)}
+                    className={`${styles.postFilterTag} ${activePostFilters.has(t) ? styles.filterActive : styles.filterInactive}`}
+                  >
                     {t}
-                  </span>
+                  </button>
                 ))}
               </div>
             </section>
@@ -163,9 +204,14 @@ export default function FeedPage() {
               <div className={styles.filterLabel}>Club Filters</div>
               <div className={styles.filterTags}>
                 {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"].map((t) => (
-                  <span key={t} className={styles.clubFilterTag}>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleClubFilter(t)}
+                    className={`${styles.clubFilterTag} ${activeClubFilters.has(t) ? styles.filterActive : styles.filterInactive}`}
+                  >
                     {t}
-                  </span>
+                  </button>
                 ))}
               </div>
             </section>
@@ -181,7 +227,7 @@ export default function FeedPage() {
             </button>
           </div>
 
-          {posts.map((p) => (
+          {filteredPosts.map((p) => (
             <article key={p.post_id} className={styles.postCard}>
               <button
                 type="button"

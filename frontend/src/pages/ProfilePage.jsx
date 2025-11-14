@@ -10,6 +10,8 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
+  const [bio, setBio] = useState("Click to add a bio...");
+  const [isEditingBio, setIsEditingBio] = useState(false);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -43,7 +45,7 @@ export default function ProfilePage() {
 
       <main className={styles.mainContent}>
         {/* Page Title */}
-        <h1 className={styles.pageTitle}>Student Profile</h1>
+        <h1 className={styles.pageTitle}>Profile</h1>
 
         <div className={styles.grid}>
           {/* Left Column - Profile Info */}
@@ -61,6 +63,28 @@ export default function ProfilePage() {
                   </h2>
                   <p className={styles.profileClass}>Class of 2027</p>
                 </div>
+              </div>
+
+              {/* Bio Section */}
+              <div className={styles.bioSection}>
+                <h3 className={styles.bioTitle}>Bio</h3>
+                {isEditingBio ? (
+                  <textarea
+                    className={styles.bioTextarea}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    onBlur={() => setIsEditingBio(false)}
+                    autoFocus
+                    rows={4}
+                  />
+                ) : (
+                  <div
+                    className={styles.bioDisplay}
+                    onClick={() => setIsEditingBio(true)}
+                  >
+                    {bio}
+                  </div>
+                )}
               </div>
 
               {/* Filters Placeholder */}

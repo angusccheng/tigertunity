@@ -63,10 +63,29 @@
   user-select: none;
   border-radius: 9999px;
   border: 1px solid rgba(253, 186, 116, 0.6);
-  background: #fff7ed;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: none;
+}
+
+.postFilterTag.filterActive {
+  background: #fff7ed;
   color: #9a3412;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.postFilterTag.filterInactive {
+  background: #fafafa;
+  color: #a3a3a3;
+  border-color: #e5e5e5;
+  opacity: 0.6;
+}
+
+.postFilterTag:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .clubFilterTag {
@@ -75,7 +94,27 @@
   border: 1px solid #e5e5e5;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: none;
+}
+
+.clubFilterTag.filterActive {
+  background: white;
   color: #404040;
+  border-color: #d4d4d4;
+}
+
+.clubFilterTag.filterInactive {
+  background: #fafafa;
+  color: #a3a3a3;
+  border-color: #e5e5e5;
+  opacity: 0.6;
+}
+
+.clubFilterTag:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 /* Feed Section */

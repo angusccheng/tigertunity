@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 
 // Post type options
-const POST_TYPES = ["Event", "Application", "Deadline", "Social", "Speaker"];
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -14,6 +14,14 @@ export default function FeedPage() {
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
+  // Filter states - all selected by default
+  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
+  const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  // Edit state
+  const [editingPost, setEditingPost] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -93,19 +101,43 @@ export default function FeedPage() {
     }
   }
 
-  async function handleDelete(selectedPost) {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    const handleDelete = async (post) => {
     try {
-      await deletePost(selectedPost.post_id);
-
-      const latestPosts = await fetchPosts();
-      setPosts(latestPosts);
-
+      await deletePost(post.post_id);
+      setPosts((prev) => prev.filter((p) => p.post_id !== post.post_id));
       setSelected(null);
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting post:", err);
     }
-  }
+  };
+
+  const handleEditClick = (post) => {
+    setEditingPost(post);
+    setEditForm({
+      post_title: post.post_title,
+      club_name: post.club_name,
+      post_content: post.post_content,
+      post_type: post.post_type,
+    });
+    setSelected(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const updated = await updatePost(editingPost.post_id, editForm);
+      setPosts((prev) =>
+        prev.map((p) => (p.post_id === editingPost.post_id ? { ...p, ...updated } : p))
+      );
+      setEditingPost(null);
+      setEditForm({});
+    } catch (err) {
+      console.error("Error updating post:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   async function handleSavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
@@ -136,6 +168,37 @@ export default function FeedPage() {
     }
   }
 
+  function togglePostFilter(filter) {
+    setActivePostFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filter)) {
+        newSet.delete(filter);
+      } else {
+        newSet.add(filter);
+      }
+      return newSet;
+    });
+  }
+
+  // Filter posts based on active filters
+  const filteredPosts = posts.filter(post => {
+    // Check if post type matches active post filters
+    const matchesPostFilter = activePostFilters.has(post.post_type);
+    
+    // Check date range if enabled
+    if (dateFilterEnabled && (startDate || endDate)) {
+      const postDate = new Date(post.post_time);
+      if (startDate && new Date(startDate) > postDate) return false;
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999); // Include the entire end date
+        if (endDateTime < postDate) return false;
+      }
+    }
+    
+    return matchesPostFilter;
+  });
+
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -150,10 +213,15 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Events", "Applications", "Deadlines", "Speaker", "Social"].map((t) => (
-                  <span key={t} className={styles.postFilterTag}>
+                {["Event", "Application", "Food", "Speaker", "Social", "General Meeting"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => togglePostFilter(t)}
+                    className={`${styles.postFilterTag} ${activePostFilters.has(t) ? styles.filterActive : styles.filterInactive}`}
+                  >
                     {t}
-                  </span>
+                  </button>
                 ))}
               </div>
             </section>
@@ -169,19 +237,58 @@ export default function FeedPage() {
                 ))}
               </div>
             </section>
+
+            {/* Date Range Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={dateFilterEnabled}
+                    onChange={(e) => setDateFilterEnabled(e.target.checked)}
+                    className={styles.dateCheckbox}
+                  />
+                  Date Range Filter
+                </label>
+              </div>
+              {dateFilterEnabled && (
+                <div className={styles.dateInputs}>
+                  <div className={styles.dateField}>
+                    <label className={styles.dateLabel}>From:</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className={styles.dateInput}
+                    />
+                  </div>
+                  <div className={styles.dateField}>
+                    <label className={styles.dateLabel}>To:</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className={styles.dateInput}
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
         </aside>
 
         {/* Feed */}
         <section className={styles.feedSection}>
           <div className={styles.feedHeader}>
-            <span className={styles.dateBadge}>{new Date().toLocaleDateString()}</span>
+            <span className={styles.dateBadge}>
+              Today's date: {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' })}
+            </span>
             <button type="button" className={styles.sortButton}>
               Sort by post date
             </button>
           </div>
 
-          {posts.map((p) => (
+          {filteredPosts.map((p) => (
             <article key={p.post_id} className={styles.postCard}>
               <button
                 type="button"
@@ -195,6 +302,11 @@ export default function FeedPage() {
                     <span> <strong> Club: </strong> {p.club_name}</span>
                     <span> <strong> Officer: </strong> {p.officer_name}</span>
                     {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
+                    {p.edit_status && p.edit_time && (
+                      <span className={styles.editedTag}>
+                        Edited: {new Date(p.edit_time).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className={styles.postActions}>
@@ -323,6 +435,91 @@ export default function FeedPage() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      {editingPost && (
+        <div id="edit-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
+          <div className={styles.modalBackdrop} onClick={() => setEditingPost(null)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Edit Post</h2>
+              <button
+                type="button"
+                onClick={() => setEditingPost(null)}
+                className={styles.closeButton}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form className={styles.form} onSubmit={handleEditSubmit}>
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Title</label>
+                <input
+                  className={styles.formInput}
+                  value={editForm.post_title}
+                  onChange={(e) => setEditForm({ ...editForm, post_title: e.target.value })}
+                  placeholder="e.g., Robotics Club Call for Members"
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Club Name</label>
+                <input
+                  className={styles.formInput}
+                  value={editForm.club_name}
+                  onChange={(e) => setEditForm({ ...editForm, club_name: e.target.value })}
+                  placeholder="e.g., Princeton Robotics Club"
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Post Type</label>
+                <select
+                  className={styles.formSelect}
+                  value={editForm.post_type}
+                  onChange={(e) => setEditForm({ ...editForm, post_type: e.target.value })}
+                >
+                  {POST_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Content</label>
+                <textarea
+                  rows={4}
+                  className={styles.formTextarea}
+                  value={editForm.post_content}
+                  onChange={(e) => setEditForm({ ...editForm, post_content: e.target.value })}
+                  placeholder="Add event details, dates, links, etc."
+                />
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPost(null)}
+                  className={styles.cancelButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={styles.submitButton}
+                >
+                  {submitting ? "Updating…" : "Update Post"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Read Modal */}
       {selected && (
         <div id="post-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
@@ -352,6 +549,11 @@ export default function FeedPage() {
                 <p className={styles.readModalDate}>
                   {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
                 </p>
+                {selected.edit_status && selected.edit_time && (
+                  <p className={styles.readModalDate}>
+                    Edited: {new Date(selected.edit_time).toLocaleString()}
+                  </p>
+                )}
                 <p className={styles.readModalContentText}>{selected.post_content}</p>
               </div>
 
@@ -363,10 +565,10 @@ export default function FeedPage() {
                 <div className={styles.readModalActions}>
                   <button
                     type="button"
-                    onClick={() => setSelected(null)}
-                    className={styles.closeModalButton}
+                    onClick={() => handleEditClick(selected)}
+                    className={styles.editButton}
                   >
-                    Close
+                    Edit
                   </button>
                   <button
                     type="button"

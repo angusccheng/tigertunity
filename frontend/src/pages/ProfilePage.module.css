@@ -25,7 +25,7 @@
 
 @media (min-width: 1024px) {
   .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -80,6 +80,60 @@
   color: #404040;
 }
 
+.bioSection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.bioTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #737373;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bioDisplay {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: #fafafa;
+  color: #404040;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  cursor: text;
+  transition: background-color 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+  min-height: 4rem;
+  white-space: pre-wrap;
+}
+
+.bioDisplay:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+}
+
+.bioTextarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ff9000;
+  background: white;
+  color: #171717;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 4rem;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 144, 0, 0.1);
+}
+
+.bioTextarea:focus {
+  border-color: #ff9000;
+}
+
 .filtersPlaceholder {
   margin-top: 1.5rem;
   display: flex;
@@ -108,7 +162,7 @@
 
 @media (min-width: 1024px) {
   .savedEventsColumn {
-    grid-column: span 1 / span 1;
+    grid-column: span 3 / span 3;
   }
 }
 
@@ -171,13 +225,37 @@
   background: #fafafa;
   padding: 0.75rem;
   transition: border-color 0.2s;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
+  gap: 0.5rem;
 }
 
 .eventItem:hover {
   border-color: #d4d4d4;
+}
+
+.eventButton {
+  flex: 1 1 0%;
+  min-width: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0;
+}
+
+.saveButton {
+  font-size: 1.5rem;
+  color: #ff9000;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.saveButton:hover {
+  transform: scale(1.2);
 }
 
 .eventContent {
@@ -249,6 +327,76 @@
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
+}
+
+.readModalContent {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 48rem;
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.readModalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: #404040;
+}
+
+.readModalMain {
+  grid-column: span 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.readModalMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  color: #525252;
+}
+
+.readModalMetaText {
+  font-weight: 500;
+  color: #262626;
+}
+
+.readModalDate {
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.readModalContentText {
+  line-height: 1.5rem;
+  color: #404040;
+  white-space: pre-wrap;
+}
+
+.readModalSidebar {
+  grid-column: span 1 / span 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.readModalType {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: right;
+  font-size: 0.75rem;
+  color: #737373;
+}
+
+.readModalTypeValue {
+  color: #404040;
 }
 
 .readModal {

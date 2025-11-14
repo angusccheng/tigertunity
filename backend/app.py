@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 import database
 
+# test
 app = flask.Flask(__name__)
 dotenv.load_dotenv()
 

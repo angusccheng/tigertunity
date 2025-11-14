@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
@@ -19,6 +19,9 @@ export default function FeedPage() {
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // Edit state
+  const [editingPost, setEditingPost] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -98,19 +101,43 @@ export default function FeedPage() {
     }
   }
 
-  async function handleDelete(selectedPost) {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    const handleDelete = async (post) => {
     try {
-      await deletePost(selectedPost.post_id);
-
-      const latestPosts = await fetchPosts();
-      setPosts(latestPosts);
-
+      await deletePost(post.post_id);
+      setPosts((prev) => prev.filter((p) => p.post_id !== post.post_id));
       setSelected(null);
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting post:", err);
     }
-  }
+  };
+
+  const handleEditClick = (post) => {
+    setEditingPost(post);
+    setEditForm({
+      post_title: post.post_title,
+      club_name: post.club_name,
+      post_content: post.post_content,
+      post_type: post.post_type,
+    });
+    setSelected(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const updated = await updatePost(editingPost.post_id, editForm);
+      setPosts((prev) =>
+        prev.map((p) => (p.post_id === editingPost.post_id ? { ...p, ...updated } : p))
+      );
+      setEditingPost(null);
+      setEditForm({});
+    } catch (err) {
+      console.error("Error updating post:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   async function handleSavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
@@ -275,6 +302,11 @@ export default function FeedPage() {
                     <span> <strong> Club: </strong> {p.club_name}</span>
                     <span> <strong> Officer: </strong> {p.officer_name}</span>
                     {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
+                    {p.edit_status && p.edit_time && (
+                      <span className={styles.editedTag}>
+                        Edited: {new Date(p.edit_time).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className={styles.postActions}>
@@ -403,6 +435,91 @@ export default function FeedPage() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      {editingPost && (
+        <div id="edit-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
+          <div className={styles.modalBackdrop} onClick={() => setEditingPost(null)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Edit Post</h2>
+              <button
+                type="button"
+                onClick={() => setEditingPost(null)}
+                className={styles.closeButton}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form className={styles.form} onSubmit={handleEditSubmit}>
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Title</label>
+                <input
+                  className={styles.formInput}
+                  value={editForm.post_title}
+                  onChange={(e) => setEditForm({ ...editForm, post_title: e.target.value })}
+                  placeholder="e.g., Robotics Club Call for Members"
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Club Name</label>
+                <input
+                  className={styles.formInput}
+                  value={editForm.club_name}
+                  onChange={(e) => setEditForm({ ...editForm, club_name: e.target.value })}
+                  placeholder="e.g., Princeton Robotics Club"
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Post Type</label>
+                <select
+                  className={styles.formSelect}
+                  value={editForm.post_type}
+                  onChange={(e) => setEditForm({ ...editForm, post_type: e.target.value })}
+                >
+                  {POST_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formFieldFull}>
+                <label className={styles.formLabel}>Post Content</label>
+                <textarea
+                  rows={4}
+                  className={styles.formTextarea}
+                  value={editForm.post_content}
+                  onChange={(e) => setEditForm({ ...editForm, post_content: e.target.value })}
+                  placeholder="Add event details, dates, links, etc."
+                />
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPost(null)}
+                  className={styles.cancelButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={styles.submitButton}
+                >
+                  {submitting ? "Updating…" : "Update Post"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Read Modal */}
       {selected && (
         <div id="post-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
@@ -432,6 +549,11 @@ export default function FeedPage() {
                 <p className={styles.readModalDate}>
                   {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
                 </p>
+                {selected.edit_status && selected.edit_time && (
+                  <p className={styles.readModalDate}>
+                    Edited: {new Date(selected.edit_time).toLocaleString()}
+                  </p>
+                )}
                 <p className={styles.readModalContentText}>{selected.post_content}</p>
               </div>
 
@@ -443,10 +565,10 @@ export default function FeedPage() {
                 <div className={styles.readModalActions}>
                   <button
                     type="button"
-                    onClick={() => setSelected(null)}
-                    className={styles.closeModalButton}
+                    onClick={() => handleEditClick(selected)}
+                    className={styles.editButton}
                   >
-                    Close
+                    Edit
                   </button>
                   <button
                     type="button"

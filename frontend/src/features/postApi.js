@@ -57,24 +57,6 @@ export async function deletePost(id) {
   }
 }
 
-export async function updatePost(id, updates) {
-  try {
-    const r = await fetch(`${API_BASE}/api/posts/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${getAccess()}`,
-      },
-      body: JSON.stringify(updates),
-    });
-    return await handleResponse(r);
-  } catch (err) {
-    console.error("Failed to update post:", err);
-    alert("Failed to update post. Please try again.");
-    throw err;
-  }
-}
-
 export async function saveClub(officerName, clubId) {
   try {
     const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/saved-clubs`, {
@@ -169,6 +151,25 @@ export async function fetchSavedPosts(officerName) {
   } catch (err) {
     console.error("Failed to fetch saved posts:", err);
     return [];
+  }
+}
+
+export async function updatePost(postId, updatedData) {
+  try {
+    const r = await fetch(`${API_BASE}/api/posts/${postId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify(updatedData),
+    });
+    const response = await handleResponse(r);
+    return response.entry || response;
+  } catch (err) {
+    console.error("Failed to update post:", err);
+    alert("Failed to update post. Please try again.");
+    throw err;
   }
 }
 

@@ -29,14 +29,18 @@ export default function ExploreClubsPage() {
     }
     setSubmitting(true);
     try {
-      await createClub(form);
+      console.log('Creating club with data:', form);
+      const result = await createClub(form);
+      console.log('Club created, response:', result);
       // Refresh both lists from server to ensure consistency
       const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      console.log('Fetched clubs - all:', all.length, 'mine:', mine.length);
       setAllClubs(all);
       setMyClubs(mine);
       setCreating(false);
       setForm({ club_name: "", club_type: "", club_profile: "" });
     } catch (err) {
+      console.error('Error creating club:', err);
       setError(err.message || "Failed to create club");
     } finally {
       setSubmitting(false);
@@ -72,7 +76,6 @@ export default function ExploreClubsPage() {
             <div className={styles.grid}>
               {myClubs.map((c) => (
                 <div className={styles.clubCard} key={`mine-${c.club_id}`}>
-                  <div className={styles.clubThumb} />
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -90,7 +93,6 @@ export default function ExploreClubsPage() {
             <div className={styles.grid}>
               {allClubs.map((c) => (
                 <div className={styles.clubCard} key={c.club_id}>
-                  <div className={styles.clubThumb} />
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>

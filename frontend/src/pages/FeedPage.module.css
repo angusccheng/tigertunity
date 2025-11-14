@@ -97,6 +97,57 @@
   color: #404040;
 }
 
+/* Date Filter */
+.dateFilterToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #404040;
+}
+
+.dateCheckbox {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+.dateInputs {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dateField {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dateLabel {
+  font-size: 0.75rem;
+  color: #525252;
+  min-width: 2.5rem;
+}
+
+.dateInput {
+  flex: 1;
+  border-radius: 0.375rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  background: white;
+  cursor: pointer;
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: #ff9000;
+  box-shadow: 0 0 0 2px rgba(255, 144, 0, 0.1);
+}
+
 /* Feed Section */
 .feedSection {
   grid-column: span 12 / span 12;
@@ -214,11 +265,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.editedTag {
-  color: #a3a3a3;
-  font-style: italic;
 }
 
 .postActions {
@@ -500,13 +546,6 @@
   color: #737373;
 }
 
-.readModalEditedDate {
-  font-size: 0.75rem;
-  color: #a3a3a3;
-  font-style: italic;
-  margin-top: 0.25rem;
-}
-
 .readModalContentText {
   line-height: 1.5rem;
   color: #404040;
@@ -535,7 +574,7 @@
 
 .readModalActions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
@@ -548,27 +587,10 @@
   cursor: pointer;
 }
 
-.editButton {
-  border-radius: 0.5rem;
-  background: #ff9000;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  color: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: filter 0.2s;
-  border: none;
-  cursor: pointer;
-}
-
-.editButton:hover {
-  filter: brightness(1.1);
-}
-
 .deleteButton {
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   background: #ef4444;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
   color: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   transition: filter 0.2s;
@@ -578,18 +600,5 @@
 
 .deleteButton:hover {
   filter: brightness(1.1);
-}
-
-.editFormContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.editFormActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
 }
 

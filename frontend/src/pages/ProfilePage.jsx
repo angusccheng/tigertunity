@@ -86,14 +86,6 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-
-              {/* Filters Placeholder */}
-              <div className={styles.filtersPlaceholder}>
-                <div className={styles.placeholderBox}>
-                  <p>add 'type' filters</p>
-                  <p className={styles.placeholderText}>add club filters</p>
-                </div>
-              </div>
             </div>
           </div>
 

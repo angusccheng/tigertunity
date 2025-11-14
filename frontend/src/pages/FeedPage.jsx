@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, updatePost, savePost, unsavePost, fetchSavedPosts } from "../features/postApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
@@ -14,6 +14,8 @@ export default function FeedPage() {
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
+  const [isEditing, setIsEditing] = useState(false); // Track if editing a post
+  const [editForm, setEditForm] = useState({ post_title: "", post_content: "", post_type: "Event" }); // Edit form state
   // Filter states - all selected by default
   const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
   const [form, setForm] = useState({
@@ -106,6 +108,44 @@ export default function FeedPage() {
       setSelected(null);
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  function handleEditClick(post) {
+    setEditForm({
+      post_title: post.post_title,
+      post_content: post.post_content,
+      post_type: post.post_type
+    });
+    setIsEditing(true);
+  }
+
+  function handleCancelEdit() {
+    setIsEditing(false);
+    setEditForm({ post_title: "", post_content: "", post_type: "Event" });
+  }
+
+  async function handleUpdate() {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      await updatePost(selected.post_id, editForm);
+      
+      // Refresh the posts list
+      const latestPosts = await fetchPosts();
+      setPosts(latestPosts);
+      
+      // Update the selected post with new data
+      const updatedPost = latestPosts.find(p => p.post_id === selected.post_id);
+      if (updatedPost) {
+        setSelected(updatedPost);
+      }
+      
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -223,6 +263,11 @@ export default function FeedPage() {
                     <span> <strong> Club: </strong> {p.club_name}</span>
                     <span> <strong> Officer: </strong> {p.officer_name}</span>
                     {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
+                    {p.edit_status && p.edit_time && (
+                      <span className={styles.editedTag}>
+                        <strong>Edited:</strong> {new Date(p.edit_time).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className={styles.postActions}>
@@ -354,58 +399,123 @@ export default function FeedPage() {
       {/* Read Modal */}
       {selected && (
         <div id="post-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
-          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
+          <div className={styles.modalBackdrop} onClick={() => { setSelected(null); setIsEditing(false); }} />
           <div className={styles.readModalContent}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
+              <h2 className={styles.modalTitle}>
+                {isEditing ? "Edit Post" : selected.post_title}
+              </h2>
               <button
                 type="button"
-                onClick={() => setSelected(null)}
+                onClick={() => { setSelected(null); setIsEditing(false); }}
                 className={styles.closeButton}
               >
                 ✕
               </button>
             </div>
 
-            <div className={styles.readModalGrid}>
-              <div className={styles.readModalMain}>
-                <div className={styles.readModalMeta}>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
-                  </p>
+            {isEditing ? (
+              /* Edit Mode */
+              <div className={styles.editFormContainer}>
+                <div className={styles.formFieldFull}>
+                  <label className={styles.formLabel}>Post Title</label>
+                  <input
+                    className={styles.formInput}
+                    value={editForm.post_title}
+                    onChange={(e) => setEditForm({ ...editForm, post_title: e.target.value })}
+                  />
                 </div>
-                <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
-                </p>
-                <p className={styles.readModalContentText}>{selected.post_content}</p>
-              </div>
 
-              <aside className={styles.readModalSidebar}>
-                <div className={styles.readModalType}>
-                  <p>Type:</p>
-                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
+                <div className={styles.formFieldFull}>
+                  <label className={styles.formLabel}>Post Type</label>
+                  <select
+                    className={styles.formSelect}
+                    value={editForm.post_type}
+                    onChange={(e) => setEditForm({ ...editForm, post_type: e.target.value })}
+                  >
+                    {POST_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className={styles.readModalActions}>
+
+                <div className={styles.formFieldFull}>
+                  <label className={styles.formLabel}>Post Content</label>
+                  <textarea
+                    rows={6}
+                    className={styles.formTextarea}
+                    value={editForm.post_content}
+                    onChange={(e) => setEditForm({ ...editForm, post_content: e.target.value })}
+                  />
+                </div>
+
+                <div className={styles.editFormActions}>
                   <button
                     type="button"
-                    onClick={() => setSelected(null)}
+                    onClick={handleCancelEdit}
                     className={styles.closeModalButton}
                   >
-                    Close
+                    Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(selected)}
-                    className={styles.deleteButton}
+                    onClick={handleUpdate}
+                    className={styles.submitButton}
+                    disabled={submitting}
                   >
-                    Delete
+                    {submitting ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
-              </aside>
-            </div>
+              </div>
+            ) : (
+              /* Read Mode */
+              <div className={styles.readModalGrid}>
+                <div className={styles.readModalMain}>
+                  <div className={styles.readModalMeta}>
+                    <p>
+                      <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
+                    </p>
+                    <p>
+                      <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                    </p>
+                  </div>
+                  <p className={styles.readModalDate}>
+                    {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
+                  </p>
+                  {selected.edit_status && selected.edit_time && (
+                    <p className={styles.readModalEditedDate}>
+                      <strong>Edited:</strong> {new Date(selected.edit_time).toLocaleString()}
+                    </p>
+                  )}
+                  <p className={styles.readModalContentText}>{selected.post_content}</p>
+                </div>
+
+                <aside className={styles.readModalSidebar}>
+                  <div className={styles.readModalType}>
+                    <p>Type:</p>
+                    <p className={styles.readModalTypeValue}>{selected.post_type}</p>
+                  </div>
+                  <div className={styles.readModalActions}>
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(selected)}
+                      className={styles.editButton}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(selected)}
+                      className={styles.deleteButton}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </aside>
+              </div>
+            )}
           </div>
         </div>
       )}

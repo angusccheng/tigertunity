@@ -30,9 +30,8 @@ export default function Header() {
             Feed
           </Link>
           <Link
-            to="#"
-            className={[styles.navLink, styles.navLinkInactive].join(" ")}
-            onClick={(e) => e.preventDefault()}
+            to="/clubs"
+            className={isActive("/clubs") ? styles.navLinkActive : [styles.navLink, styles.navLinkInactive].join(" ")}
           >
             Explore Clubs
           </Link>

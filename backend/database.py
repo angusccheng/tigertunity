@@ -325,7 +325,8 @@ def add_club_to_officer(officer_id, club_id):
         if officer.officer_clubs is None:
             officer.officer_clubs = []
         if club_id not in officer.officer_clubs:
-            officer.officer_clubs.append(club_id)
+            # Create a new list to trigger SQLAlchemy change detection
+            officer.officer_clubs = officer.officer_clubs + [club_id]
         session.commit()
         return True
 

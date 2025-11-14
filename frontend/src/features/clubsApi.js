@@ -1,0 +1,47 @@
+import { getAccess } from "../auth";
+
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+async function handleResponse(r) {
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`HTTP ${r.status}: ${text}`);
+  }
+  return await r.json();
+}
+
+export async function fetchAllClubs() {
+  try {
+    const r = await fetch(`${API_BASE}/api/clubs`);
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch clubs:", err);
+    return [];
+  }
+}
+
+export async function fetchMyOfficerClubs() {
+  try {
+    const r = await fetch(`${API_BASE}/api/clubs/mine`, {
+      headers: {
+        Authorization: `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch my officer clubs:", err);
+    return [];
+  }
+}
+
+export async function createClub({ club_name, club_profile = "", club_type = "", club_filters = [] }) {
+  const r = await fetch(`${API_BASE}/api/clubs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccess()}`,
+    },
+    body: JSON.stringify({ club_name, club_profile, club_type, club_filters }),
+  });
+  return await handleResponse(r);
+}

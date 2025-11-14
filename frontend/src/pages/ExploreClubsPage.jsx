@@ -29,11 +29,11 @@ export default function ExploreClubsPage() {
     }
     setSubmitting(true);
     try {
-      const res = await createClub(form);
-      const created = res.entry;
-      // optimistic prepend
-      setAllClubs((prev) => [created, ...prev]);
-      setMyClubs((prev) => [created, ...prev]);
+      await createClub(form);
+      // Refresh both lists from server to ensure consistency
+      const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      setMyClubs(mine);
       setCreating(false);
       setForm({ club_name: "", club_type: "", club_profile: "" });
     } catch (err) {
@@ -55,7 +55,7 @@ export default function ExploreClubsPage() {
             className={tab === "mine" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
             onClick={() => setTab("mine")}
           >
-            Clubs I'm an Officer In
+            My Clubs
           </button>
           <button
             role="tab"
@@ -73,7 +73,10 @@ export default function ExploreClubsPage() {
               {myClubs.map((c) => (
                 <div className={styles.clubCard} key={`mine-${c.club_id}`}>
                   <div className={styles.clubThumb} />
-                  <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                  <div className={styles.clubInfo}>
+                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
+                  </div>
                 </div>
               ))}
 
@@ -88,7 +91,10 @@ export default function ExploreClubsPage() {
               {allClubs.map((c) => (
                 <div className={styles.clubCard} key={c.club_id}>
                   <div className={styles.clubThumb} />
-                  <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                  <div className={styles.clubInfo}>
+                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -105,24 +111,24 @@ export default function ExploreClubsPage() {
               <button className={styles.closeButton} onClick={() => setCreating(false)}>✕</button>
             </div>
             <form onSubmit={onCreate} className={styles.form}>
-              <label className={styles.formField}> 
+              <label className={styles.formField}>
                 <span className={styles.formLabel}>Club Name</span>
-                <input className={styles.formInput} value={form.club_name} onChange={(e)=>setForm({...form, club_name:e.target.value})} placeholder="e.g., Princeton Robotics" />
+                <input className={styles.formInput} value={form.club_name} onChange={(e) => setForm({ ...form, club_name: e.target.value })} placeholder="e.g., Princeton Robotics" />
               </label>
-              <label className={styles.formField}> 
+              <label className={styles.formField}>
                 <span className={styles.formLabel}>Club Type (optional)</span>
-                <input className={styles.formInput} value={form.club_type} onChange={(e)=>setForm({...form, club_type:e.target.value})} placeholder="e.g., STEM" />
+                <input className={styles.formInput} value={form.club_type} onChange={(e) => setForm({ ...form, club_type: e.target.value })} placeholder="e.g., STEM" />
               </label>
-              <label className={styles.formFieldFull}> 
+              <label className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Club Profile (optional)</span>
-                <textarea className={styles.formTextarea} rows={3} value={form.club_profile} onChange={(e)=>setForm({...form, club_profile:e.target.value})} placeholder="Short description" />
+                <textarea className={styles.formTextarea} rows={3} value={form.club_profile} onChange={(e) => setForm({ ...form, club_profile: e.target.value })} placeholder="Short description" />
               </label>
 
               {error && <div className={styles.errorText}>{error}</div>}
 
               <div className={styles.formActions}>
-                <button type="button" className={styles.clearButton} onClick={()=>setForm({club_name:"", club_type:"", club_profile:""})}>Clear</button>
-                <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting? "Creating…" : "Create Club"}</button>
+                <button type="button" className={styles.clearButton} onClick={() => setForm({ club_name: "", club_type: "", club_profile: "" })}>Clear</button>
+                <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Creating…" : "Create Club"}</button>
               </div>
             </form>
           </div>

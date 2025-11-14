@@ -268,8 +268,7 @@ def create_club():
             club_profile=club_profile,
             club_type=club_type,
             club_filters=club_filters,
-            club_officers=[officer.officer_id],
-            president=officer.officer_id
+            club_officers=[officer.officer_id]
         )
 
         # Link both sides

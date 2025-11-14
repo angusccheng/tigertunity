@@ -5,7 +5,7 @@ import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 
 // Post type options
-const POST_TYPES = ["Event", "Application", "Deadline", "Social", "Speaker"];
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -15,8 +15,7 @@ export default function FeedPage() {
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   // Filter states - all selected by default
-  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Deadline", "Speaker", "Social"]));
-  const [activeClubFilters, setActiveClubFilters] = useState(new Set(["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"]));
+  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -151,18 +150,6 @@ export default function FeedPage() {
     });
   }
 
-  function toggleClubFilter(filter) {
-    setActiveClubFilters(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(filter)) {
-        newSet.delete(filter);
-      } else {
-        newSet.add(filter);
-      }
-      return newSet;
-    });
-  }
-
   // Filter posts based on active filters
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
@@ -186,7 +173,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Event", "Application", "Deadline", "Speaker", "Social"].map((t) => (
+                {["Event", "Application", "Food", "Speaker", "Social", "General Meeting"].map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -204,14 +191,9 @@ export default function FeedPage() {
               <div className={styles.filterLabel}>Club Filters</div>
               <div className={styles.filterTags}>
                 {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => toggleClubFilter(t)}
-                    className={`${styles.clubFilterTag} ${activeClubFilters.has(t) ? styles.filterActive : styles.filterInactive}`}
-                  >
+                  <span key={t} className={styles.clubFilterTag}>
                     {t}
-                  </button>
+                  </span>
                 ))}
               </div>
             </section>

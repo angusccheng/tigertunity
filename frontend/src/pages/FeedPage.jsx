@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
+import { fetchMyOfficerClubs } from "../features/clubsApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
@@ -9,6 +10,7 @@ const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "Genera
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
+  const [myClubs, setMyClubs] = useState([]);
   const [selected, setSelected] = useState(null); // read modal
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +42,25 @@ export default function FeedPage() {
   useEffect(() => {
     (async () => setPosts(await fetchPosts()))();
   }, []);
+
+  // Load "My Clubs" (clubs where current user is an officer)
+  useEffect(() => {
+    (async () => {
+      try {
+        const mine = await fetchMyOfficerClubs();
+        setMyClubs(Array.isArray(mine) ? mine : []);
+      } catch (e) {
+        setMyClubs([]);
+      }
+    })();
+  }, []);
+
+  // When opening composer and no club selected, default to first club
+  useEffect(() => {
+    if (composerOpen && myClubs.length > 0 && !form.club_name) {
+      setForm((prev) => ({ ...prev, club_name: myClubs[0].club_name }));
+    }
+  }, [composerOpen, myClubs]);
 
   // Load saved posts to show star state
   useEffect(() => {
@@ -372,12 +393,21 @@ export default function FeedPage() {
 
               <div>
                 <label className={styles.formLabel}>Club Name</label>
-                <input
-                  className={[styles.formInput, errors.club_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                <select
+                  className={[styles.formSelect, errors.club_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.club_name}
                   onChange={(e) => setForm({ ...form, club_name: e.target.value })}
-                  placeholder="e.g., Princeton Robotics Club"
-                />
+                  disabled={myClubs.length === 0}
+                >
+                  {myClubs.map((c) => (
+                    <option key={c.club_id} value={c.club_name}>{c.club_name}</option>
+                  ))}
+                </select>
+                {myClubs.length === 0 && (
+                  <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#ef4444' }}>
+                    You must be an officer of a club to create posts.
+                  </div>
+                )}
               </div>
 
               <div>
@@ -424,7 +454,7 @@ export default function FeedPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || myClubs.length === 0}
                   className={styles.submitButton}
                 >
                   {submitting ? "Creating…" : "Create Post"}

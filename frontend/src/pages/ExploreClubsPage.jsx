@@ -162,30 +162,20 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div className={styles.grid}>
               {myClubs.map((c) => (
-                                <div
-                   className={styles.clubCard}
-                   key={`mine-${c.club_id}`}
-                   role="button"
-                   tabIndex={0}
-                   onClick={(e) => openDetails(c, e)}
-                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                   aria-label={`View details for ${c.club_name || 'club'}`}
-                   style={{ position: 'relative' }}
-                 >
-                   <button
-                     type="button"
-                     className={styles.clearButton}
-                     title="Delete club"
-                     onClick={(e) => onDeleteClub(c, e)}
-                     style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
-                   >
-                     🗑️
-                   </button>
-                   <div className={styles.clubInfo}>
-                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                   </div>
-                 </div>
+                <div
+                  className={styles.clubCard}
+                  key={`mine-${c.club_id}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => openDetails(c, e)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
+                  aria-label={`View details for ${c.club_name || 'club'}`}
+                >
+                  <div className={styles.clubInfo}>
+                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
+                  </div>
+                </div>
 
               ))}
 
@@ -306,9 +296,22 @@ export default function ExploreClubsPage() {
               </div>
               {/* Room for actions: Save/Join, View Posts, etc. */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button className={styles.clearButton} onClick={handleCloseDetails}>
-                  Close
-                </button>
+                {myClubs.some(c => c.club_id === selectedClub.club_id) && (
+                  <button
+                    onClick={(e) => onDeleteClub(selectedClub, e)}
+                    style={{
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      background: '#ef4444',
+                      color: 'white',
+                      padding: '0.5rem 1rem',
+                      cursor: 'pointer',
+                      fontWeight: 500
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           </div>

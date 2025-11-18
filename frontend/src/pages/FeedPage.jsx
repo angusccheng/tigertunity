@@ -11,6 +11,7 @@ const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "Genera
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
   const [myClubs, setMyClubs] = useState([]);
+  const [clubSessionExpired, setClubSessionExpired] = useState(false);
   const [selected, setSelected] = useState(null); // read modal
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +49,13 @@ export default function FeedPage() {
     (async () => {
       try {
         const mine = await fetchMyOfficerClubs();
-        setMyClubs(Array.isArray(mine) ? mine : []);
+        if (mine && mine._unauthorized) {
+          setClubSessionExpired(true);
+          setMyClubs([]);
+        } else {
+          setClubSessionExpired(false);
+          setMyClubs(Array.isArray(mine) ? mine : []);
+        }
       } catch (e) {
         setMyClubs([]);
       }
@@ -226,6 +233,19 @@ export default function FeedPage() {
 
       {/* Main */}
       <main className={styles.mainContent}>
+        {clubSessionExpired && (
+          <div style={{
+            marginBottom: '0.75rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.5rem',
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            fontSize: '0.9rem'
+          }}>
+            Session expired — please log in again.
+          </div>
+        )}
         {/* Sidebar */}
         <aside className={styles.sidebar}>
           <h2 className={styles.sidebarTitle}>Filters</h2>

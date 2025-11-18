@@ -9,6 +9,7 @@ import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub } from "../f
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
   const [myClubs, setMyClubs] = useState([]);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [tab, setTab] = useState("mine"); // 'mine' | 'all'; default to mine
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -23,9 +24,15 @@ export default function ExploreClubsPage() {
 
   useEffect(() => {
     (async () => {
-      const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
       setAllClubs(all);
-      setMyClubs(mine);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
     })();
   }, []);
 
@@ -86,10 +93,16 @@ export default function ExploreClubsPage() {
       });
       console.log('Club created, response:', result);
       // Refresh both lists from server to ensure consistency
-      const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
-      console.log('Fetched clubs - all:', all.length, 'mine:', mine.length);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      console.log('Fetched clubs - all:', all.length, 'mine:', (Array.isArray(mineRaw) ? mineRaw.length : 0));
       setAllClubs(all);
-      setMyClubs(mine);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
       setCreating(false);
       setForm({ club_name: "", club_type: "", club_profile: "" });
       setOfficers([]);
@@ -139,6 +152,19 @@ export default function ExploreClubsPage() {
       <Header />
 
       <main className={styles.mainContent}>
+        {sessionExpired && (
+          <div style={{
+            marginBottom: '0.75rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.5rem',
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            fontSize: '0.9rem'
+          }}>
+            Session expired — please log in again.
+          </div>
+        )}
         <div className={styles.tabs} role="tablist">
           <button
             role="tab"

@@ -27,6 +27,9 @@ export async function fetchMyOfficerClubs() {
         Authorization: `Bearer ${getAccess()}`,
       },
     });
+    if (r.status === 401) {
+      return { _unauthorized: true };
+    }
     return await handleResponse(r);
   } catch (err) {
     console.error("Failed to fetch my officer clubs:", err);

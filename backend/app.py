@@ -245,40 +245,64 @@ def create_club():
         club_profile = data.get('club_profile') or ''
         club_type = data.get('club_type') or ''
         club_filters = data.get('club_filters') or []
+        # New: list of officer usernames provided by client (netids)
+        officer_usernames = data.get('officer_usernames') or []
 
         if not club_name:
             return flask.jsonify({'error': 'Missing club_name'}), 400
 
         username = flask_jwt_extended.get_jwt_identity()
-
-        # Ensure officer exists for creator
-        officer = database.get_officer_by_name(username)
-        if officer is None:
-            officer = database.create_officer(
-                officer_name=username,
-                saved_posts=[],
-                officer_clubs=[],
-                saved_clubs=[],
-                associated_posts=[]
-            )
+        # Normalize officer usernames: ensure creator included, lowercase, unique
+        normalized = []
+        for name in officer_usernames:
+            if isinstance(name, str):
+                n = name.strip().lower()
+                if n:
+                    normalized.append(n)
+        creator_norm = username.strip().lower()
+        if creator_norm not in normalized:
+            normalized.append(creator_norm)
+        # De-duplicate while preserving order
+        seen = set()
+        final_usernames = []
+        for n in normalized:
+            if n not in seen:
+                seen.add(n)
+                final_usernames.append(n)
 
         # Prevent duplicate clubs by name
         existing = database.get_club_by_name(club_name)
         if existing is not None:
             return flask.jsonify({'error': 'Club name already exists'}), 409
 
+        # Ensure officer records exist and collect their IDs
+        officer_ids = []
+        for uname in final_usernames:
+            officer_obj = database.get_officer_by_name(uname)
+            if officer_obj is None:
+                officer_obj = database.create_officer(
+                    officer_name=uname,
+                    saved_posts=[],
+                    officer_clubs=[],
+                    saved_clubs=[],
+                    associated_posts=[]
+                )
+            officer_ids.append(officer_obj.officer_id)
+
         club = database.create_club(
             club_name=club_name,
             club_profile=club_profile,
             club_type=club_type,
             club_filters=club_filters,
-            club_officers=[officer.officer_id]
+            club_officers=officer_ids
         )
 
-        # Link both sides
-        database.add_club_to_officer(officer.officer_id, club.club_id)
+        # Link club to each officer (officer_clubs array)
+        for oid in officer_ids:
+            database.add_club_to_officer(oid, club.club_id)
 
         entry = model_to_dict(club)
+        entry['officer_usernames'] = final_usernames
         return flask.jsonify({'message': 'Club created successfully', 'entry': entry})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

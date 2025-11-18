@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"];
 import Header from "../components/Header.jsx";
@@ -16,6 +17,9 @@ export default function ExploreClubsPage() {
   const [selectedClub, setSelectedClub] = useState(null);
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
+  const [officerInput, setOfficerInput] = useState("");
+  const [officers, setOfficers] = useState([]); // usernames (netids)
+  const currentUser = getUser();
 
   useEffect(() => {
     (async () => {
@@ -70,7 +74,16 @@ export default function ExploreClubsPage() {
     setSubmitting(true);
     try {
       console.log('Creating club with data:', form);
-      const result = await createClub(form);
+      // Build final officer list: user-typed + current user
+      const normalized = officers.map(o => o.trim().toLowerCase()).filter(o => o);
+      if (currentUser) {
+        const cu = currentUser.trim().toLowerCase();
+        if (!normalized.includes(cu)) normalized.push(cu);
+      }
+      const result = await createClub({
+        ...form,
+        officer_usernames: Array.from(new Set(normalized))
+      });
       console.log('Club created, response:', result);
       // Refresh both lists from server to ensure consistency
       const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
@@ -79,12 +92,27 @@ export default function ExploreClubsPage() {
       setMyClubs(mine);
       setCreating(false);
       setForm({ club_name: "", club_type: "", club_profile: "" });
+      setOfficers([]);
+      setOfficerInput("");
     } catch (err) {
       console.error('Error creating club:', err);
       setError(err.message || "Failed to create club");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function addOfficer() {
+    const v = officerInput.trim().toLowerCase();
+    if (!v) return;
+    if (!officers.includes(v) && v !== currentUser?.trim().toLowerCase()) {
+      setOfficers(prev => [...prev, v]);
+    }
+    setOfficerInput("");
+  }
+
+  function removeOfficer(name) {
+    setOfficers(prev => prev.filter(o => o !== name));
   }
 
   return (
@@ -186,6 +214,33 @@ export default function ExploreClubsPage() {
                   ))}
                 </select>
               </label>
+              <div className={styles.formFieldFull}>
+                <span className={styles.formLabel}>Officers (your NetID auto-added)</span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    className={styles.formInput}
+                    placeholder="Enter officer NetID"
+                    value={officerInput}
+                    onChange={(e) => setOfficerInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOfficer(); } }}
+                    style={{ flex: 1 }}
+                  />
+                  <button type="button" className={styles.submitButton} onClick={addOfficer} style={{ whiteSpace: 'nowrap' }}>Add Officer</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {currentUser && (
+                    <span style={{ background:'#ffedd5', border:'1px solid #fdba74', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                      {currentUser.trim().toLowerCase()} (you)
+                    </span>
+                  )}
+                  {officers.map(o => (
+                    <span key={o} style={{ display:'inline-flex', alignItems:'center', gap:'0.25rem', background:'#e0f2fe', border:'1px solid #7dd3fc', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                      {o}
+                      <button type="button" aria-label={`Remove ${o}`} onClick={() => removeOfficer(o)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:'0.9rem', lineHeight:1 }}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
               <label className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Club Profile (optional)</span>
                 <textarea className={styles.formTextarea} rows={3} value={form.club_profile} onChange={(e) => setForm({ ...form, club_profile: e.target.value })} placeholder="Short description" />

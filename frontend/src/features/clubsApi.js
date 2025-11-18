@@ -34,14 +34,15 @@ export async function fetchMyOfficerClubs() {
   }
 }
 
-export async function createClub({ club_name, club_profile = "", club_type = "", club_filters = [] }) {
+export async function createClub({ club_name, club_profile = "", club_type = "", club_filters = [], officer_usernames = [] }) {
+  const payload = { club_name, club_profile, club_type, club_filters, officer_usernames };
   const r = await fetch(`${API_BASE}/api/clubs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${getAccess()}`,
     },
-    body: JSON.stringify({ club_name, club_profile, club_type, club_filters }),
+    body: JSON.stringify(payload),
   });
   return await handleResponse(r);
 }

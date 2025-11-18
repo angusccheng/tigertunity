@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub } from "../features/clubsApi.js";
@@ -11,6 +11,9 @@ export default function ExploreClubsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ club_name: "", club_type: "", club_profile: "" });
   const [error, setError] = useState("");
+  const [selectedClub, setSelectedClub] = useState(null);
+  const lastOpenerRef = useRef(null);
+  const closeBtnRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -19,6 +22,41 @@ export default function ExploreClubsPage() {
       setMyClubs(mine);
     })();
   }, []);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        if (creating) setCreating(false);
+        if (selectedClub) handleCloseDetails();
+      }
+    }
+    if (creating || selectedClub) {
+      document.addEventListener("keydown", onKeyDown);
+      // move focus to close button on open
+      setTimeout(() => {
+        if (closeBtnRef.current) closeBtnRef.current.focus();
+      }, 0);
+      // optional: lock background scroll
+      const { overflow } = document.body.style;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.removeEventListener("keydown", onKeyDown);
+        document.body.style.overflow = overflow;
+      };
+    }
+  }, [creating, selectedClub]);
+
+  function openDetails(c, e) {
+    lastOpenerRef.current = e?.currentTarget || null;
+    setSelectedClub(c);
+  }
+
+  function handleCloseDetails() {
+    setSelectedClub(null);
+    if (lastOpenerRef.current) {
+      try { lastOpenerRef.current.focus(); } catch {}
+    }
+  }
 
   async function onCreate(e) {
     e.preventDefault();
@@ -75,7 +113,15 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div className={styles.grid}>
               {myClubs.map((c) => (
-                <div className={styles.clubCard} key={`mine-${c.club_id}`}>
+                <div
+                  className={styles.clubCard}
+                  key={`mine-${c.club_id}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => openDetails(c, e)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
+                  aria-label={`View details for ${c.club_name || 'club'}`}
+                >
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -92,7 +138,15 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div className={styles.grid}>
               {allClubs.map((c) => (
-                <div className={styles.clubCard} key={c.club_id}>
+                <div
+                  className={styles.clubCard}
+                  key={c.club_id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => openDetails(c, e)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
+                  aria-label={`View details for ${c.club_name || 'club'}`}
+                >
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -110,7 +164,7 @@ export default function ExploreClubsPage() {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>Create New Club</h3>
-              <button className={styles.closeButton} onClick={() => setCreating(false)}>✕</button>
+              <button ref={closeBtnRef} className={styles.closeButton} onClick={() => setCreating(false)}>✕</button>
             </div>
             <form onSubmit={onCreate} className={styles.form}>
               <label className={styles.formField}>
@@ -133,6 +187,35 @@ export default function ExploreClubsPage() {
                 <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Creating…" : "Create Club"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedClub && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="club-details-title">
+          <div className={styles.modalBackdrop} onClick={handleCloseDetails} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3 id="club-details-title" className={styles.modalTitle}>{selectedClub.club_name || 'Club Details'}</h3>
+              <button ref={closeBtnRef} className={styles.closeButton} onClick={handleCloseDetails} aria-label="Close">✕</button>
+            </div>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              {selectedClub.club_type && (
+                <div><strong>Type:</strong> {selectedClub.club_type}</div>
+              )}
+              <div>
+                <strong>About:</strong>
+                <div style={{ marginTop: '0.25rem', color: '#525252', lineHeight: 1.4 }}>
+                  {selectedClub.club_profile || 'No description available.'}
+                </div>
+              </div>
+              {/* Room for actions: Save/Join, View Posts, etc. */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button className={styles.clearButton} onClick={handleCloseDetails}>
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

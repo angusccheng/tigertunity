@@ -208,7 +208,17 @@ def list_clubs():
     """Get all clubs"""
     try:
         clubs = database.get_all_clubs()
-        clubs_dict = [model_to_dict(c) for c in clubs]
+        clubs_dict = []
+        for club in clubs:
+            entry = model_to_dict(club)
+            # Enrich with officer names
+            officer_names = []
+            for oid in (club.club_officers or []):
+                officer = database.get_officer_by_id(oid)
+                if officer:
+                    officer_names.append(officer.officer_name)
+            entry['officer_names'] = officer_names
+            clubs_dict.append(entry)
         return flask.jsonify(clubs_dict)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -229,7 +239,15 @@ def list_my_officer_clubs():
         for cid in club_ids:
             club = database.get_club_by_id(cid)
             if club is not None:
-                result.append(model_to_dict(club))
+                entry = model_to_dict(club)
+                # Enrich with officer names
+                officer_names = []
+                for oid in (club.club_officers or []):
+                    officer_obj = database.get_officer_by_id(oid)
+                    if officer_obj:
+                        officer_names.append(officer_obj.officer_name)
+                entry['officer_names'] = officer_names
+                result.append(entry)
         return flask.jsonify(result)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

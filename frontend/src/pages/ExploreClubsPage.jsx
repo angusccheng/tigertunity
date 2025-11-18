@@ -320,6 +320,14 @@ export default function ExploreClubsPage() {
                   {selectedClub.club_profile || 'No description available.'}
                 </div>
               </div>
+              {selectedClub.officer_names && selectedClub.officer_names.length > 0 && (
+                <div>
+                  <strong>Officers:</strong>
+                  <div style={{ marginTop: '0.25rem', color: '#525252' }}>
+                    {selectedClub.officer_names.join(', ')}
+                  </div>
+                </div>
+              )}
               {/* Room for actions: Save/Join, View Posts, etc. */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {myClubs.some(c => c.club_id === selectedClub.club_id) && (

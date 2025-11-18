@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+// Reuse club type filter options from FeedPage
+const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"];
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub } from "../features/clubsApi.js";
@@ -173,7 +175,16 @@ export default function ExploreClubsPage() {
               </label>
               <label className={styles.formField}>
                 <span className={styles.formLabel}>Club Type (optional)</span>
-                <input className={styles.formInput} value={form.club_type} onChange={(e) => setForm({ ...form, club_type: e.target.value })} placeholder="e.g., STEM" />
+                <select
+                  className={styles.formInput}
+                  value={form.club_type}
+                  onChange={(e) => setForm({ ...form, club_type: e.target.value })}
+                >
+                  <option value="">Select a type</option>
+                  {CLUB_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </label>
               <label className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Club Profile (optional)</span>
@@ -183,7 +194,6 @@ export default function ExploreClubsPage() {
               {error && <div className={styles.errorText}>{error}</div>}
 
               <div className={styles.formActions}>
-                <button type="button" className={styles.clearButton} onClick={() => setForm({ club_name: "", club_type: "", club_profile: "" })}>Clear</button>
                 <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Creating…" : "Create Club"}</button>
               </div>
             </form>

@@ -4,7 +4,7 @@ import { getUser } from "../auth";
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"];
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub } from "../features/clubsApi.js";
 
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
@@ -115,6 +115,25 @@ export default function ExploreClubsPage() {
     setOfficers(prev => prev.filter(o => o !== name));
   }
 
+  async function onDeleteClub(c, e) {
+    if (e) e.stopPropagation();
+    const name = c.club_name || 'this club';
+    const ok = window.confirm(`Delete "${name}" and all its posts? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      await deleteClub(c.club_id);
+      const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      setMyClubs(mine);
+      if (selectedClub && selectedClub.club_id === c.club_id) {
+        handleCloseDetails();
+      }
+    } catch (err) {
+      console.error('Failed to delete club:', err);
+      alert(`Failed to delete club: ${err.message}`);
+    }
+  }
+
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -143,20 +162,31 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div className={styles.grid}>
               {myClubs.map((c) => (
-                <div
-                  className={styles.clubCard}
-                  key={`mine-${c.club_id}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => openDetails(c, e)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                  aria-label={`View details for ${c.club_name || 'club'}`}
-                >
-                  <div className={styles.clubInfo}>
-                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                  </div>
-                </div>
+                                <div
+                   className={styles.clubCard}
+                   key={`mine-${c.club_id}`}
+                   role="button"
+                   tabIndex={0}
+                   onClick={(e) => openDetails(c, e)}
+                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
+                   aria-label={`View details for ${c.club_name || 'club'}`}
+                   style={{ position: 'relative' }}
+                 >
+                   <button
+                     type="button"
+                     className={styles.clearButton}
+                     title="Delete club"
+                     onClick={(e) => onDeleteClub(c, e)}
+                     style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+                   >
+                     🗑️
+                   </button>
+                   <div className={styles.clubInfo}>
+                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
+                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
+                   </div>
+                 </div>
+
               ))}
 
               <button type="button" className={styles.addCard} onClick={() => setCreating(true)}>

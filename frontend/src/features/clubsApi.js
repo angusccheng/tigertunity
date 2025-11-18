@@ -46,3 +46,13 @@ export async function createClub({ club_name, club_profile = "", club_type = "",
   });
   return await handleResponse(r);
 }
+
+export async function deleteClub(clubId) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  return await handleResponse(r);
+}

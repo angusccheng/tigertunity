@@ -307,6 +307,51 @@ def create_club():
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/api/clubs/<int:club_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def delete_club(club_id):
+    """Delete a club and cascade-delete its posts; clean officer/user references.
+    Authorization: any officer listed in club_officers may delete.
+    """
+    try:
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        # 1) Delete all posts for this club
+        posts = database.get_posts_by_club(club_id)
+        for p in posts:
+            database.delete_post(p.post_id)
+
+        # 2) Remove club from all officers' officer_clubs and saved_clubs
+        officers = database.get_all_officers()
+        for of in officers:
+            if (of.officer_clubs and club_id in of.officer_clubs):
+                database.remove_club_from_officer(of.officer_id, club_id)
+            if (of.saved_clubs and club_id in of.saved_clubs):
+                database.remove_saved_club_from_officer(of.officer_id, club_id)
+
+        # 3) Remove club from all users' saved_clubs
+        users = database.get_all_users()
+        for u in users:
+            if (u.saved_clubs and club_id in u.saved_clubs):
+                database.remove_saved_club_from_user(u.user_id, club_id)
+
+        # 4) Finally, delete the club
+        database.delete_club(club_id)
+
+        return flask.jsonify({'message': 'Club deleted successfully'})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts', methods=['POST'])

@@ -101,7 +101,7 @@ export default function FeedPage() {
     }
   }
 
-    const handleDelete = async (post) => {
+  const handleDelete = async (post) => {
     try {
       await deletePost(post.post_id);
       setPosts((prev) => prev.filter((p) => p.post_id !== post.post_id));
@@ -184,7 +184,7 @@ export default function FeedPage() {
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
     const matchesPostFilter = activePostFilters.has(post.post_type);
-    
+
     // Check date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
       const postDate = new Date(post.post_time);
@@ -195,7 +195,7 @@ export default function FeedPage() {
         if (endDateTime < postDate) return false;
       }
     }
-    
+
     return matchesPostFilter;
   });
 
@@ -290,10 +290,17 @@ export default function FeedPage() {
 
           {filteredPosts.map((p) => (
             <article key={p.post_id} className={styles.postCard}>
-              <button
-                type="button"
+              <div
                 onClick={() => setSelected(p)}
                 className={styles.postButton}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelected(p);
+                  }
+                }}
               >
                 <div className={styles.postAvatar} />
                 <div className={styles.postContent}>
@@ -324,7 +331,7 @@ export default function FeedPage() {
                     </button>
                   )}
                 </div>
-              </button>
+              </div>
             </article>
           ))}
         </section>

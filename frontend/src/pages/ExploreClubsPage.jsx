@@ -4,7 +4,7 @@ import { getUser } from "../auth";
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"];
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
 
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
@@ -12,8 +12,11 @@ export default function ExploreClubsPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [tab, setTab] = useState("mine"); // 'mine' | 'all'; default to mine
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editingClub, setEditingClub] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ club_name: "", club_type: "", club_profile: "" });
+  const [editForm, setEditForm] = useState({ club_type: "", club_profile: "" });
   const [error, setError] = useState("");
   const [selectedClub, setSelectedClub] = useState(null);
   const lastOpenerRef = useRef(null);
@@ -40,10 +43,11 @@ export default function ExploreClubsPage() {
     function onKeyDown(e) {
       if (e.key === "Escape") {
         if (creating) setCreating(false);
+        if (editing) setEditing(false);
         if (selectedClub) handleCloseDetails();
       }
     }
-    if (creating || selectedClub) {
+    if (creating || editing || selectedClub) {
       document.addEventListener("keydown", onKeyDown);
       // move focus to close button on open
       setTimeout(() => {
@@ -57,7 +61,7 @@ export default function ExploreClubsPage() {
         document.body.style.overflow = overflow;
       };
     }
-  }, [creating, selectedClub]);
+  }, [creating, editing, selectedClub]);
 
   function openDetails(c, e) {
     lastOpenerRef.current = e?.currentTarget || null;
@@ -135,15 +139,57 @@ export default function ExploreClubsPage() {
     if (!ok) return;
     try {
       await deleteClub(c.club_id);
-      const [all, mine] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
       setAllClubs(all);
-      setMyClubs(mine);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
       if (selectedClub && selectedClub.club_id === c.club_id) {
         handleCloseDetails();
       }
     } catch (err) {
       console.error('Failed to delete club:', err);
       alert(`Failed to delete club: ${err.message}`);
+    }
+  }
+
+  function handleEditClick(club) {
+    setEditingClub(club);
+    setEditForm({
+      club_type: club.club_type || "",
+      club_profile: club.club_profile || "",
+    });
+    setSelectedClub(null);
+    setEditing(true);
+  }
+
+  async function onEditSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const result = await updateClub(editingClub.club_id, editForm);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
+      setEditing(false);
+      setEditingClub(null);
+      setEditForm({ club_type: "", club_profile: "" });
+    } catch (err) {
+      console.error('Error updating club:', err);
+      setError(err.message || "Failed to update club");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -331,23 +377,76 @@ export default function ExploreClubsPage() {
               {/* Room for actions: Save/Join, View Posts, etc. */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {myClubs.some(c => c.club_id === selectedClub.club_id) && (
-                  <button
-                    onClick={(e) => onDeleteClub(selectedClub, e)}
-                    style={{
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      background: '#ef4444',
-                      color: 'white',
-                      padding: '0.5rem 1rem',
-                      cursor: 'pointer',
-                      fontWeight: 500
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleEditClick(selectedClub)}
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '0.5rem',
+                        background: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => onDeleteClub(selectedClub, e)}
+                      style={{
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        background: '#ef4444',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {editing && editingClub && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalBackdrop} onClick={() => setEditing(false)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Edit Club: {editingClub.club_name}</h3>
+              <button ref={closeBtnRef} className={styles.closeButton} onClick={() => setEditing(false)}>✕</button>
+            </div>
+            <form onSubmit={onEditSubmit} className={styles.form}>
+              <label className={styles.formField}>
+                <span className={styles.formLabel}>Club Type (optional)</span>
+                <select
+                  className={styles.formInput}
+                  value={editForm.club_type}
+                  onChange={(e) => setEditForm({ ...editForm, club_type: e.target.value })}
+                >
+                  <option value="">Select a type</option>
+                  {CLUB_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.formFieldFull}>
+                <span className={styles.formLabel}>Club Profile (optional)</span>
+                <textarea className={styles.formTextarea} rows={3} value={editForm.club_profile} onChange={(e) => setEditForm({ ...editForm, club_profile: e.target.value })} placeholder="Short description" />
+              </label>
+
+              {error && <div className={styles.errorText}>{error}</div>}
+
+              <div className={styles.formActions}>
+                <button type="button" className={styles.clearButton} onClick={() => setEditing(false)}>Cancel</button>
+                <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Updating…" : "Update Club"}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

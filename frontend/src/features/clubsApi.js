@@ -50,6 +50,18 @@ export async function createClub({ club_name, club_profile = "", club_type = "",
   return await handleResponse(r);
 }
 
+export async function updateClub(clubId, updates) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccess()}`,
+    },
+    body: JSON.stringify(updates),
+  });
+  return await handleResponse(r);
+}
+
 export async function deleteClub(clubId) {
   const r = await fetch(`${API_BASE}/api/clubs/${clubId}`, {
     method: "DELETE",

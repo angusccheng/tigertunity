@@ -325,6 +325,51 @@ def create_club():
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/api/clubs/<int:club_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_club(club_id):
+    """Update a club's information.
+    Authorization: any officer listed in club_officers may edit.
+    """
+    try:
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        
+        # Update basic fields
+        if 'club_profile' in data:
+            club = database.update_club(club_id, club_profile=data['club_profile'])
+        if 'club_type' in data:
+            club = database.update_club(club_id, club_type=data['club_type'])
+        if 'club_filters' in data:
+            club = database.update_club(club_id, club_filters=data['club_filters'])
+
+        # Refresh to get latest
+        club = database.get_club_by_id(club_id)
+        entry = model_to_dict(club)
+        
+        # Enrich with officer names
+        officer_names = []
+        for oid in (club.club_officers or []):
+            officer_obj = database.get_officer_by_id(oid)
+            if officer_obj:
+                officer_names.append(officer_obj.officer_name)
+        entry['officer_names'] = officer_names
+        
+        return flask.jsonify({'message': 'Club updated successfully', 'entry': entry})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 @app.route('/api/clubs/<int:club_id>', methods=['DELETE'])
 @flask_jwt_extended.jwt_required()
 def delete_club(club_id):

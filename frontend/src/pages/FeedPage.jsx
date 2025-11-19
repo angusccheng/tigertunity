@@ -271,7 +271,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Club Filters</div>
               <div className={styles.filterTags}>
-                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"].map((t) => (
+                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"].map((t) => (
                   <span key={t} className={styles.clubFilterTag}>
                     {t}
                   </span>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
-const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"];
+const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";

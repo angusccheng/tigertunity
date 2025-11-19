@@ -1,45 +1,56 @@
--- commands for creating all of the tables
-CREATE TABLE post_table (
-  post_id SERIAL PRIMARY KEY,
+-- POST TABLE
+CREATE TABLE IF NOT EXISTS post_table (
+  post_id INTEGER PRIMARY KEY AUTOINCREMENT,
   post_title TEXT NOT NULL,
-  club_id INT NOT NULL,
-  officer_id INT NOT NULL,
+  club_id INTEGER NOT NULL,
+  officer_id INTEGER NOT NULL,
   post_content TEXT NOT NULL,
-  post_time TIMESTAMP DEFAULT NOW(),
+  post_time TEXT DEFAULT CURRENT_TIMESTAMP,
   post_type TEXT NOT NULL,
-  edit_time TIMESTAMP DEFAULT NOW(),
-  edit_status BOOL DEFAULT FALSE
-)
+  edit_time TEXT DEFAULT CURRENT_TIMESTAMP,
+  edit_status INTEGER DEFAULT 0
+);
 
-CREATE TABLE user_table (
-  user_id SERIAL PRIMARY KEY,
+-- USER TABLE
+CREATE TABLE IF NOT EXISTS user_table (
+  user_id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_name TEXT NOT NULL,
-  saved_posts INTEGER[],
-  saved_clubs INTEGER[]
-)
+  saved_posts TEXT,   -- store JSON array
+  saved_clubs TEXT    -- store JSON array
+);
 
-CREATE TABLE officer_table (
-  officer_id SERIAL PRIMARY KEY,
+-- OFFICER TABLE
+CREATE TABLE IF NOT EXISTS officer_table (
+  officer_id INTEGER PRIMARY KEY AUTOINCREMENT,
   officer_name TEXT NOT NULL,
-  saved_posts INTEGER[],
-  saved_clubs INTEGER[],
-  officer_clubs INTEGER[],
-  associated_posts INTEGER[]
-)
+  saved_posts TEXT,        -- JSON array
+  saved_clubs TEXT,        -- JSON array
+  officer_clubs TEXT,      -- JSON array
+  associated_posts TEXT    -- JSON array
+);
 
-CREATE TABLE club_table (
-  club_id SERIAL PRIMARY KEY,
+-- CLUB TABLE
+CREATE TABLE IF NOT EXISTS club_table (
+  club_id INTEGER PRIMARY KEY AUTOINCREMENT,
   club_profile TEXT NOT NULL,
   club_type TEXT NOT NULL,
-  club_filters TEXT[],
-  club_officers INTEGER[],
+  club_filters TEXT,       -- JSON array
+  club_officers TEXT,      -- JSON array
   president INTEGER,
   vice_president INTEGER,
   treasurer INTEGER
-)
+);
 
-CREATE TABLE nonces (
-    nonce VARCHAR NOT NULL,
-    username VARCHAR,
-    PRIMARY KEY (nonce)
+-- NONCES TABLE
+CREATE TABLE IF NOT EXISTS nonces (
+    nonce TEXT PRIMARY KEY,
+    username TEXT
+);
+
+-- CHAT MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT,
+    text TEXT,
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP
 );

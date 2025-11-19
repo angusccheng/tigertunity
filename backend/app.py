@@ -10,7 +10,10 @@ import urllib.parse
 import urllib.request
 import database
 
+from flask_socketio import SocketIO, emit
+
 app = flask.Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 dotenv.load_dotenv()
 
 FRONTEND_URL = os.environ['FRONTEND_URL']
@@ -594,3 +597,40 @@ def get_saved_posts_for_officer(officer_name):
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+#-----------------------------------------------------------------------
+# Chat: History API + WebSocket Events
+#-----------------------------------------------------------------------
+
+@app.route("/api/messages", methods=["GET"])
+def get_messages():
+    """Return chat history (all messages sorted by timestamp)"""
+    try:
+        conn = database.get_db()
+        rows = conn.execute("SELECT * FROM messages ORDER BY timestamp ASC").fetchall()
+        messages = [dict(row) for row in rows]
+        return flask.jsonify(messages)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+
+@socketio.on("send_message")
+def handle_send_message(data):
+    """Save message and broadcast to all clients"""
+    text = data.get("text", "")
+    user = data.get("user", "Anonymous")
+
+    conn = database.get_db()
+    conn.execute(
+        "INSERT INTO messages (user, text, timestamp) VALUES (?, ?, datetime('now'))",
+        (user, text)
+    )
+    conn.commit()
+
+    emit("receive_message", data, broadcast=True)
+    
+@socketio.on("connect")
+def on_connect():
+    print("Client connected via WebSocket")
+
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=5000)

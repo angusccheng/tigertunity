@@ -515,12 +515,16 @@ export default function FeedPage() {
 
               <div>
                 <label className={styles.formLabel}>Club Name</label>
-                <input
-                  className={styles.formInput}
+                <select
+                  className={styles.formSelect}
                   value={editForm.club_name}
                   onChange={(e) => setEditForm({ ...editForm, club_name: e.target.value })}
-                  placeholder="e.g., Princeton Robotics Club"
-                />
+                  disabled={myClubs.length === 0}
+                >
+                  {myClubs.map((c) => (
+                    <option key={c.club_id} value={c.club_name}>{c.club_name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

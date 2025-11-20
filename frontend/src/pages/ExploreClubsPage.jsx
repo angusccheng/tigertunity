@@ -117,6 +117,10 @@ export default function ExploreClubsPage() {
       setError("Club name is required");
       return;
     }
+    if (!form.club_type) {
+      setError("Club type is required");
+      return;
+    }
     setSubmitting(true);
     try {
       console.log('Creating club with data:', form);
@@ -417,19 +421,20 @@ export default function ExploreClubsPage() {
                 <span className={styles.formLabel}>Club Name</span>
                 <input className={styles.formInput} value={form.club_name} onChange={(e) => setForm({ ...form, club_name: e.target.value })} placeholder="e.g., Princeton Robotics" />
               </label>
-              <label className={styles.formField}>
-                <span className={styles.formLabel}>Club Type (optional)</span>
-                <select
-                  className={styles.formInput}
-                  value={form.club_type}
-                  onChange={(e) => setForm({ ...form, club_type: e.target.value })}
-                >
-                  <option value="">Select a type</option>
-                  {CLUB_TYPES.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </label>
+                <label className={styles.formField}>
+                  <span className={styles.formLabel}>Club Type (required)</span>
+                  <select
+                    className={styles.formInput}
+                    value={form.club_type}
+                    required
+                    onChange={(e) => setForm({ ...form, club_type: e.target.value })}
+                  >
+                    <option value="" disabled>Select a type...</option>
+                    {CLUB_TYPES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
               <div className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Officers (your NetID auto-added)</span>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>

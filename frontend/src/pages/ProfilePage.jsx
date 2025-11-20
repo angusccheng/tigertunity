@@ -68,7 +68,7 @@ export default function ProfilePage() {
               <div className={styles.profileHeader}>
                 {/* Profile Picture Placeholder */}
                 <div className={styles.profileAvatar} />
-                
+
                 {/* User Info */}
                 <div className={styles.profileInfo}>
                   <h2 className={styles.profileName}>

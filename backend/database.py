@@ -221,7 +221,7 @@ def get_posts_by_type(post_type, limit=None):
             query = query.limit(limit)
         return query.all()
 
-def create_post(post_title, club_id, officer_id, post_content, post_type, event_starttime, event_endtime):
+def create_post(post_title, club_id, officer_id, post_content, post_type, event_starttime=None, event_endtime=None):
     """Create a new post"""
     with sqlalchemy.orm.Session(_engine) as session:
         post = Post(

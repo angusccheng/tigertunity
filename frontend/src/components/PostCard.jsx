@@ -17,7 +17,7 @@ export default function PostCard({ post, onClick, onSaveToggle, isSaved, showSav
                         {post.post_time && <span><strong>Posted:</strong>{new Date(post.post_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
                         {post.post_type && <span className={styles.postType}>{post.post_type}</span>}
                     </div>
-                    {(post.event_starttime || post.event_endtime) && (
+                    {(post.post_type !== "Application" && (post.event_starttime && post.event_endtime)) && (
                         <div className={styles.eventTimeLine}>
                             <strong>Event Time:</strong>
                             {post.event_starttime
@@ -25,6 +25,14 @@ export default function PostCard({ post, onClick, onSaveToggle, isSaved, showSav
                                 : " ?"}
                             {post.event_endtime
                                 ? ` – ${new Date(post.event_endtime).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                                : ""}
+                        </div>
+                    )}
+                    {(post.post_type === "Application" && post.event_endtime) && (
+                        <div className={styles.appDeadline}>
+                            <strong>Deadline:</strong>
+                            {post.event_endtime
+                                ? `${new Date(post.event_endtime).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
                                 : ""}
                         </div>
                     )}

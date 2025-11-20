@@ -317,15 +317,25 @@ def create_post():
             )
         
         # Create the post using SQLAlchemy
-        post = database.create_post(
-            post_title=post_title,
-            club_id=club.club_id,
-            officer_id=officer.officer_id,
-            post_content=post_content,
-            post_type=post_type,
-            event_starttime=event_starttime,
-            event_endtime=event_endtime
-        )
+        if event_starttime:
+            post = database.create_post(
+                post_title=post_title,
+                club_id=club.club_id,
+                officer_id=officer.officer_id,
+                post_content=post_content,
+                post_type=post_type,
+                event_starttime=event_starttime,
+                event_endtime=event_endtime
+            )
+        else:
+            post = database.create_post(
+                post_title=post_title,
+                club_id=club.club_id,
+                officer_id=officer.officer_id,
+                post_content=post_content,
+                post_type=post_type,
+                event_endtime=event_endtime
+            )
         database.add_post_to_officer(officer.officer_id, post.post_id)
         # database.add_post_to_club(club_id, post.post_id)
         

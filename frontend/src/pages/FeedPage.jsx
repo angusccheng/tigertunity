@@ -72,7 +72,7 @@ export default function FeedPage() {
     if (!f.officer_name.trim()) e.officer_name = "Officer name is required";
     if (!f.post_content.trim()) e.post_content = "Content is required";
     if (!f.post_type) e.post_type = "Post type is required";
-    if (f.post_type === "Event") {
+    if (f.post_type !== "Application") {
       if (!f.event_starttime) e.event_starttime = "Start time is required";
       if (!f.event_endtime) e.event_endtime = "End time is required";
       if (f.event_starttime && f.event_endtime) {
@@ -80,6 +80,9 @@ export default function FeedPage() {
         const et = new Date(f.event_endtime);
         if (et < st) e.event_endtime = "End time must be after start";
       }
+    }
+    if (f.post_type === "Application") {
+      if (!f.event_endtime) e.event_endtime = "Deadline is required";
     }
     return e;
   }
@@ -401,7 +404,18 @@ export default function FeedPage() {
                 />
               </div>
 
-              {form.post_type === "Event" && (
+              {form.post_type === "Application" ? (
+                <div>
+                  <label className={styles.formLabel}>Deadline (date & time)</label>
+                  <input
+                    type="datetime-local"
+                    className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                    value={form.event_endtime}
+                    onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
+                  />
+                  {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
+                </div>
+              ) : (
                 <>
                   <div>
                     <label className={styles.formLabel}>Event Start (date & time)</label>
@@ -429,7 +443,8 @@ export default function FeedPage() {
               <div className={styles.formActions}>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!window.confirm("Clear all fields? This will discard your current input.")) return;
                     setForm({
                       post_title: "",
                       club_name: "",
@@ -438,8 +453,9 @@ export default function FeedPage() {
                       post_type: "Event",
                       event_starttime: "",
                       event_endtime: "",
-                    })
-                  }
+                    });
+                    setErrors({});
+                  }}
                   className={styles.clearButton}
                 >
                   Clear

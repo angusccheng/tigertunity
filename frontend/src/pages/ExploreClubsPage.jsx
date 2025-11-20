@@ -4,6 +4,7 @@ import { getUser } from "../auth";
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
+import profileStyles from "./ProfilePage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
 import { fetchPostsByClub } from "../features/postApi.js";
 
@@ -22,6 +23,7 @@ export default function ExploreClubsPage() {
   const [selectedClub, setSelectedClub] = useState(null);
   const [clubPosts, setClubPosts] = useState([]);
   const [clubPostsLoading, setClubPostsLoading] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [officerInput, setOfficerInput] = useState("");
@@ -48,9 +50,10 @@ export default function ExploreClubsPage() {
         if (creating) setCreating(false);
         if (editing) setEditing(false);
         if (selectedClub) handleCloseDetails();
+        if (selectedPost) setSelectedPost(null);
       }
     }
-    if (creating || editing || selectedClub) {
+    if (creating || editing || selectedClub || selectedPost) {
       document.addEventListener("keydown", onKeyDown);
       // move focus to close button on open
       setTimeout(() => {
@@ -64,7 +67,7 @@ export default function ExploreClubsPage() {
         document.body.style.overflow = overflow;
       };
     }
-  }, [creating, editing, selectedClub]);
+  }, [creating, editing, selectedClub, selectedPost]);
 
   function openDetails(c, e) {
     lastOpenerRef.current = e?.currentTarget || null;
@@ -75,6 +78,7 @@ export default function ExploreClubsPage() {
     setSelectedClub(null);
     setClubPosts([]);
     setClubPostsLoading(false);
+    setSelectedPost(null);
     if (lastOpenerRef.current) {
       try { lastOpenerRef.current.focus(); } catch {}
     }
@@ -409,7 +413,12 @@ export default function ExploreClubsPage() {
                     <p className={styles.postsEmpty}>No posts yet for this club.</p>
                   ) : (
                     clubPosts.map(p => (
-                      <div key={p.post_id} className={styles.postItem}>
+                      <button
+                        key={p.post_id}
+                        type="button"
+                        className={styles.postItem}
+                        onClick={() => setSelectedPost(p)}
+                      >
                         <div className={styles.postItemMain}>
                           <div className={styles.postItemTitle}>{p.post_title}</div>
                           <div className={styles.postItemMeta}>
@@ -421,7 +430,7 @@ export default function ExploreClubsPage() {
                             ) : null}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -460,6 +469,48 @@ export default function ExploreClubsPage() {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedPost && (
+        <div className={profileStyles.modalOverlay}>
+          <div className={profileStyles.modalBackdrop} onClick={() => setSelectedPost(null)} />
+          <div className={profileStyles.readModalContent}>
+            <div className={profileStyles.modalHeader}>
+              <h2 className={profileStyles.modalTitle}>{selectedPost.post_title}</h2>
+              <button
+                type="button"
+                onClick={() => setSelectedPost(null)}
+                className={profileStyles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={profileStyles.readModalGrid}>
+              <div className={profileStyles.readModalMain}>
+                <div className={profileStyles.readModalMeta}>
+                  <p>
+                    <span className={profileStyles.readModalMetaText}> <strong> Club: </strong> {selectedPost.club_name}</span>
+                  </p>
+                  <p>
+                    <span className={profileStyles.readModalMetaText}> <strong> Officer: </strong> {selectedPost.officer_name}</span>
+                  </p>
+                </div>
+                <p className={profileStyles.readModalDate}>
+                  {selectedPost.timestamp || selectedPost.post_time ? new Date(selectedPost.timestamp || selectedPost.post_time).toLocaleString() : ""}
+                </p>
+                <p className={profileStyles.readModalContentText}>{selectedPost.post_description || selectedPost.post_content || ""}</p>
+              </div>
+
+              <aside className={profileStyles.readModalSidebar}>
+                <div className={profileStyles.readModalType}>
+                  <p>Type:</p>
+                  <p className={profileStyles.readModalTypeValue}>{selectedPost.post_type}</p>
+                </div>
+              </aside>
             </div>
           </div>
         </div>

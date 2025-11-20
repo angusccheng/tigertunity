@@ -248,3 +248,57 @@
   color: #ef4444;
   font-size: 0.875rem;
 }
+
+/* Posts list inside club modal */
+.postsCard {
+  margin-top: 0.5rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.75rem;
+  background: #fafafa;
+  padding: 0.75rem;
+}
+
+.postsTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.postsList {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.postsLoading, .postsEmpty {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.postItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e5e5e5;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.postItemMain {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.postItemTitle {
+  font-weight: 600;
+  color: #171717;
+  font-size: 0.9rem;
+}
+
+.postItemMeta {
+  display: flex;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+}

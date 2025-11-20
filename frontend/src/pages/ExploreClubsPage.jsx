@@ -5,6 +5,7 @@ const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Comm
 import Header from "../components/Header.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
+import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
@@ -19,6 +20,8 @@ export default function ExploreClubsPage() {
   const [editForm, setEditForm] = useState({ club_type: "", club_profile: "" });
   const [error, setError] = useState("");
   const [selectedClub, setSelectedClub] = useState(null);
+  const [clubPosts, setClubPosts] = useState([]);
+  const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [officerInput, setOfficerInput] = useState("");
@@ -70,10 +73,31 @@ export default function ExploreClubsPage() {
 
   function handleCloseDetails() {
     setSelectedClub(null);
+    setClubPosts([]);
+    setClubPostsLoading(false);
     if (lastOpenerRef.current) {
       try { lastOpenerRef.current.focus(); } catch {}
     }
   }
+
+  useEffect(() => {
+    async function loadClubPosts() {
+      if (!selectedClub) return;
+      setClubPostsLoading(true);
+      try {
+        const posts = await fetchPostsByClub(selectedClub.club_id);
+        // show most recent first
+        const sorted = [...posts].sort((a, b) => new Date(b.post_time || b.timestamp || 0) - new Date(a.post_time || a.timestamp || 0));
+        setClubPosts(sorted);
+      } catch (e) {
+        console.error('Failed to load club posts', e);
+        setClubPosts([]);
+      } finally {
+        setClubPostsLoading(false);
+      }
+    }
+    loadClubPosts();
+  }, [selectedClub]);
 
   async function onCreate(e) {
     e.preventDefault();
@@ -374,6 +398,34 @@ export default function ExploreClubsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Club Posts */}
+              <div className={styles.postsCard}>
+                <h4 className={styles.postsTitle}>Club Posts</h4>
+                <div className={styles.postsList}>
+                  {clubPostsLoading ? (
+                    <p className={styles.postsLoading}>Loading…</p>
+                  ) : clubPosts.length === 0 ? (
+                    <p className={styles.postsEmpty}>No posts yet for this club.</p>
+                  ) : (
+                    clubPosts.map(p => (
+                      <div key={p.post_id} className={styles.postItem}>
+                        <div className={styles.postItemMain}>
+                          <div className={styles.postItemTitle}>{p.post_title}</div>
+                          <div className={styles.postItemMeta}>
+                            {p.post_type && <span>Type: {p.post_type}</span>}
+                            {p.timestamp || p.post_time ? (
+                              <span>
+                                {new Date(p.timestamp || p.post_time).toLocaleString()}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
               {/* Room for actions: Save/Join, View Posts, etc. */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {myClubs.some(c => c.club_id === selectedClub.club_id) && (

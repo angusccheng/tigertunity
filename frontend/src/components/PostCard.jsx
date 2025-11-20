@@ -14,14 +14,14 @@ export default function PostCard({ post, onClick, onSaveToggle, isSaved, showSav
                     <div className={styles.postMeta}>
                         <span><strong>Club:</strong> {post.club_name}</span>
                         <span><strong>Officer:</strong> {post.officer_name}</span>
+                        {post.post_time && <span><strong>Posted:</strong>{new Date(post.post_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
                         {post.post_type && <span className={styles.postType}>{post.post_type}</span>}
-                        {post.post_time && <span>Posted: {new Date(post.post_time).toLocaleString()}</span>}
                     </div>
                     {(post.event_starttime || post.event_endtime) && (
                         <div className={styles.eventTimeLine}>
                             <strong>Event Time:</strong>
                             {post.event_starttime
-                                ? ` ${new Date(post.event_starttime).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                                ? `${new Date(post.event_starttime).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
                                 : " ?"}
                             {post.event_endtime
                                 ? ` – ${new Date(post.event_endtime).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`

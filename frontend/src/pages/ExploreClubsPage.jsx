@@ -36,6 +36,11 @@ export default function ExploreClubsPage() {
     (async () => {
       const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
       setAllClubs(all);
+      // Capture any dynamic club types not in the static list and add them to active filters
+      const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
+      if (dynamicTypes.length) {
+        setActiveClubTypeFilters(prev => new Set([...prev, ...dynamicTypes]));
+      }
       if (mineRaw && mineRaw._unauthorized) {
         setSessionExpired(true);
         setMyClubs([]);
@@ -206,8 +211,39 @@ export default function ExploreClubsPage() {
   }
 
   // Filtered lists; if a club has no club_type treat it as always visible
-  const displayMyClubs = myClubs.filter(c => !c.club_type || activeClubTypeFilters.has(c.club_type));
-  const displayAllClubs = allClubs.filter(c => !c.club_type || activeClubTypeFilters.has(c.club_type));
+  const displayMyClubs = myClubs.filter(c => {
+    if (!c.club_type) return true;
+    // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
+    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+  });
+  const displayAllClubs = allClubs.filter(c => {
+    if (!c.club_type) return true;
+    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+  });
+
+  // Derive dynamic types for rendering filter buttons
+  const extraTypes = Array.from(new Set(allClubs.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
+  const allFilterTypes = [...CLUB_TYPES, ...extraTypes];
+
+  async function refreshClubs() {
+    try {
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
+      if (dynamicTypes.length) {
+        setActiveClubTypeFilters(prev => new Set([...prev, ...dynamicTypes]));
+      }
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
+    } catch (e) {
+      console.error('Failed to refresh clubs', e);
+    }
+  }
 
   async function onEditSubmit(e) {
     e.preventDefault();
@@ -253,9 +289,9 @@ export default function ExploreClubsPage() {
             Session expired — please log in again.
           </div>
         )}
-        {/* Club Type Filters */}
+        {/* Club Type Filters (including dynamic types) */}
         <div className={styles.typeFiltersBar}>
-          {CLUB_TYPES.map(t => (
+          {allFilterTypes.map(t => (
             <button
               key={t}
               type="button"
@@ -288,6 +324,22 @@ export default function ExploreClubsPage() {
 
         {tab === "mine" ? (
           <section className={styles.section}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
+              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>My Clubs</h2>
+              <button
+                type="button"
+                onClick={refreshClubs}
+                style={{
+                  border:'1px solid #e5e5e5',
+                  background:'#fff',
+                  padding:'0.4rem 0.75rem',
+                  borderRadius:'0.5rem',
+                  cursor:'pointer',
+                  fontSize:'0.8rem',
+                  fontWeight:500
+                }}
+              >Refresh</button>
+            </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
                 <div
@@ -314,6 +366,22 @@ export default function ExploreClubsPage() {
           </section>
         ) : (
           <section className={styles.section}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
+              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>All Clubs</h2>
+              <button
+                type="button"
+                onClick={refreshClubs}
+                style={{
+                  border:'1px solid #e5e5e5',
+                  background:'#fff',
+                  padding:'0.4rem 0.75rem',
+                  borderRadius:'0.5rem',
+                  cursor:'pointer',
+                  fontSize:'0.8rem',
+                  fontWeight:500
+                }}
+              >Refresh</button>
+            </div>
             <div className={styles.grid}>
               {displayAllClubs.map((c) => (
                 <div

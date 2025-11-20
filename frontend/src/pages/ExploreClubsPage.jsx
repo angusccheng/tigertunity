@@ -24,6 +24,8 @@ export default function ExploreClubsPage() {
   const [clubPosts, setClubPosts] = useState([]);
   const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  // Club type filters (all selected by default)
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [officerInput, setOfficerInput] = useState("");
@@ -195,6 +197,18 @@ export default function ExploreClubsPage() {
     setEditing(true);
   }
 
+  function toggleClubTypeFilter(type) {
+    setActiveClubTypeFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }
+
+  // Filtered lists; if a club has no club_type treat it as always visible
+  const displayMyClubs = myClubs.filter(c => !c.club_type || activeClubTypeFilters.has(c.club_type));
+  const displayAllClubs = allClubs.filter(c => !c.club_type || activeClubTypeFilters.has(c.club_type));
+
   async function onEditSubmit(e) {
     e.preventDefault();
     setError("");
@@ -239,6 +253,20 @@ export default function ExploreClubsPage() {
             Session expired — please log in again.
           </div>
         )}
+        {/* Club Type Filters */}
+        <div className={styles.typeFiltersBar}>
+          {CLUB_TYPES.map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleClubTypeFilter(t)}
+              className={activeClubTypeFilters.has(t) ? `${styles.typeFilter} ${styles.typeFilterActive}` : `${styles.typeFilter} ${styles.typeFilterInactive}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
         <div className={styles.tabs} role="tablist">
           <button
             role="tab"
@@ -261,7 +289,7 @@ export default function ExploreClubsPage() {
         {tab === "mine" ? (
           <section className={styles.section}>
             <div className={styles.grid}>
-              {myClubs.map((c) => (
+              {displayMyClubs.map((c) => (
                 <div
                   className={styles.clubCard}
                   key={`mine-${c.club_id}`}
@@ -287,7 +315,7 @@ export default function ExploreClubsPage() {
         ) : (
           <section className={styles.section}>
             <div className={styles.grid}>
-              {allClubs.map((c) => (
+              {displayAllClubs.map((c) => (
                 <div
                   className={styles.clubCard}
                   key={c.club_id}

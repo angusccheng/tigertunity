@@ -288,12 +288,14 @@
 .postItemMain {
   display: grid;
   gap: 0.125rem;
+  justify-items: start; /* ensure inner elements align left */
 }
 
 .postItemTitle {
   font-weight: 600;
   color: #171717;
   font-size: 0.9rem;
+  text-align: left; /* explicit left alignment */
 }
 
 .postItemMeta {

@@ -3,6 +3,7 @@ import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
+import PostCard from "../components/PostCard.jsx";
 
 export default function ProfilePage() {
   const user = getUser();
@@ -114,29 +115,14 @@ export default function ProfilePage() {
                   <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
                 ) : (
                   savedPosts.map((post) => (
-                    <div key={post.post_id} className={styles.eventItem}>
-                      <button
-                        type="button"
-                        onClick={() => setSelected(post)}
-                        className={styles.eventButton}
-                      >
-                        <div className={styles.eventContent}>
-                          <p className={styles.eventLabel}>Post:</p>
-                          <p className={styles.eventSubject}>{post.post_title}</p>
-                          <p className={styles.eventText}>Club: {post.club_name}</p>
-                          {post.post_type && <p className={styles.eventText}>Type: {post.post_type}</p>}
-                          {post.timestamp && <p className={styles.eventText}>Posted: {new Date(post.timestamp).toLocaleString()}</p>}
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleUnsavePost(post.post_id, e)}
-                        className={styles.saveButton}
-                        title="Unsave post"
-                      >
-                        ★
-                      </button>
-                    </div>
+                    <PostCard
+                      key={post.post_id}
+                      post={post}
+                      onClick={() => setSelected(post)}
+                      onSaveToggle={(e) => handleUnsavePost(post.post_id, e)}
+                      isSaved={true}
+                      showSaveButton={true}
+                    />
                   ))
                 )}
               </div>

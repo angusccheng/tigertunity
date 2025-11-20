@@ -20,10 +20,13 @@ class Post(Base):
     club_id = Column(Integer, ForeignKey("club_table.club_id"), nullable=False)
     officer_id = Column(Integer, ForeignKey("officer_table.officer_id"), nullable=False)
     post_content = Column(Text, nullable=False)
-    post_time = Column(TIMESTAMP, server_default=func.now())
+    post_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     post_type = Column(Text, nullable=False)
-    edit_time = Column(TIMESTAMP, server_default=func.now())
+    edit_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     edit_status = Column(Boolean, default=False)
+    event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
+    event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
+    
     
 class User(Base):
     __tablename__ = "user_table"
@@ -218,7 +221,7 @@ def get_posts_by_type(post_type, limit=None):
             query = query.limit(limit)
         return query.all()
 
-def create_post(post_title, club_id, officer_id, post_content, post_type):
+def create_post(post_title, club_id, officer_id, post_content, post_type, event_starttime, event_endtime):
     """Create a new post"""
     with sqlalchemy.orm.Session(_engine) as session:
         post = Post(
@@ -226,7 +229,9 @@ def create_post(post_title, club_id, officer_id, post_content, post_type):
             club_id=club_id,
             officer_id=officer_id,
             post_content=post_content,
-            post_type=post_type
+            post_type=post_type,
+            event_starttime=event_starttime,
+            event_endtime=event_endtime
         )
         session.add(post)
         session.commit()

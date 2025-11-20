@@ -1,0 +1,58 @@
+.postCard {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 2px solid #e0e0e0;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.postCard:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  border-color: #bdbdbd;
+}
+.postButton {
+  flex: 1;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 1rem;
+  cursor: pointer;
+}
+.postContent {
+  display: flex;
+  flex-direction: column;
+}
+.postTitle {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+.postMeta {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.postType {
+  background: #eee;
+  border-radius: 4px;
+  padding: 0 0.5em;
+  font-size: 0.85em;
+}
+.postContentText {
+  font-size: 1rem;
+  color: #222;
+}
+.saveButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #f5b700;
+  cursor: pointer;
+  align-self: center;
+  margin-right: 1rem;
+}

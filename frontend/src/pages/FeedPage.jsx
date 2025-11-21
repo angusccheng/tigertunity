@@ -26,6 +26,8 @@ export default function FeedPage() {
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -276,6 +278,23 @@ export default function FeedPage() {
       }
     }
 
+    // Check search query (case-insensitive, partial matching across all fields)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        post.post_title,
+        post.post_content,
+        post.club_name,
+        post.officer_name,
+        post.post_type,
+        post.club_type
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
+
     return matchesPostFilter && matchesClubType;
   });
   // Derived sorted list of unique club types for rendering (union of defaults + discovered)
@@ -380,6 +399,22 @@ export default function FeedPage() {
 
         {/* Feed */}
         <section className={styles.feedSection}>
+          <div className={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput}
+            />
+            <div className={styles.searchResultCount}>
+              {searchQuery.trim() && (
+                <span>
+                  {filteredPosts.length} {filteredPosts.length === 1 ? 'result' : 'results'} found
+                </span>
+              )}
+            </div>
+          </div>
           <div className={styles.feedHeader}>
             <span className={styles.dateBadge}>
               Today's date: {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' })}
@@ -389,18 +424,24 @@ export default function FeedPage() {
             </button>
           </div>
 
-          {filteredPosts.map((p) => (
-            <PostCard
-              key={p.post_id}
-              post={p}
-              onClick={() => setSelected(p)}
-              onSaveToggle={(e) => savedPosts.has(p.post_id)
-                ? handleUnsavePost(p.post_id, e)
-                : handleSavePost(p.post_id, e)}
-              isSaved={savedPosts.has(p.post_id)}
-              showSaveButton={!!user}
-            />
-          ))}
+          {filteredPosts.length === 0 && searchQuery.trim() ? (
+            <div className={styles.noResults}>
+              No posts match your search for "{searchQuery}"
+            </div>
+          ) : (
+            filteredPosts.map((p) => (
+              <PostCard
+                key={p.post_id}
+                post={p}
+                onClick={() => setSelected(p)}
+                onSaveToggle={(e) => savedPosts.has(p.post_id)
+                  ? handleUnsavePost(p.post_id, e)
+                  : handleSavePost(p.post_id, e)}
+                isSaved={savedPosts.has(p.post_id)}
+                showSaveButton={!!user}
+              />
+            ))
+          )}
         </section>
       </main>
 

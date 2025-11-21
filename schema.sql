@@ -1,3 +1,4 @@
+-- tigertunity/schema.sql
 -- commands for creating all of the tables
 CREATE TABLE post_table (
   post_id SERIAL PRIMARY KEY,
@@ -42,4 +43,15 @@ CREATE TABLE nonces (
     nonce VARCHAR NOT NULL,
     username VARCHAR,
     PRIMARY KEY (nonce)
+);
+
+-- Table for AI-parsed / Zapier-ingested posts
+CREATE TABLE parsed_posts (
+    parsed_id SERIAL PRIMARY KEY,
+    post_title TEXT NOT NULL,
+    club_name TEXT NOT NULL,
+    officer_name TEXT NOT NULL DEFAULT 'tigertunity-bot',
+    post_content TEXT NOT NULL,
+    post_type TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
 );

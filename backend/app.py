@@ -1,3 +1,4 @@
+# tigertunity/backend/app.py 
 import flask
 import flask_cors
 import os
@@ -234,21 +235,66 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
-    """Get all posts, limited to 20 most recent"""
+    """Get merged user-created posts + AI-parsed posts (20 newest total)."""
     try:
-        posts = database.get_all_posts(limit=20, order_by='post_time', order_desc=True)
-        posts_dict = [model_to_dict(post) for post in posts]
-        for i, post in enumerate(posts_dict):
-            club_id = post['club_id']
-            officer_id = post['officer_id']
-            club_name = database.get_club_by_id(club_id).club_name
-            officer_name = database.get_officer_by_id(officer_id).officer_name
-            posts_dict[i]['club_name'] = club_name
-            posts_dict[i]['officer_name'] = officer_name
-            posts_dict[i]['timestamp'] = post.get('post_time')
-        return flask.jsonify(posts_dict)
+        # ---- 1. USER POSTS ----
+        user_posts = database.get_all_posts(limit=None, order_by='post_time', order_desc=True)
+        user_posts_dict = []
+
+        for post in user_posts:
+            entry = model_to_dict(post)
+
+            # enrich fields
+            try:
+                club_obj = database.get_club_by_id(entry.get('club_id'))
+                entry['club_name'] = getattr(club_obj, 'club_name', None)
+            except:
+                entry['club_name'] = None
+
+            try:
+                officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+            except:
+                entry['officer_name'] = None
+
+            entry['timestamp'] = entry.get('post_time')
+            entry['source'] = "user"   # <-- FLAG FOR FRONTEND
+
+            user_posts_dict.append(entry)
+
+        # ---- 2. PARSED POSTS ----
+        parsed_posts = database.get_all_parsed_posts()
+        parsed_posts_dict = []
+
+        for p in parsed_posts:
+            d = model_to_dict(p)
+
+            parsed_posts_dict.append({
+                "post_id": f"parsed-{d['parsed_id']}",  # ensure unique IDs for frontend
+                "post_title": d.get("post_title"),
+                "club_name": d.get("club_name"),
+                "officer_name": d.get("officer_name", "tigertunity-bot"),
+                "post_content": d.get("post_content"),
+                "post_type": d.get("post_type"),
+                "timestamp": d.get("created_at"),
+                "edit_status": False,
+                "source": "parsed"
+            })
+
+        # ---- 3. MERGE & SORT ----
+        merged = user_posts_dict + parsed_posts_dict
+        merged_sorted = sorted(
+            merged,
+            key=lambda x: x["timestamp"] or datetime.datetime.min,
+            reverse=True
+        )
+
+        # LIMIT TO 20 NEWEST POSTS
+        return flask.jsonify(merged_sorted[:20])
+
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+
 
 #-----------------------------------------------------------------------
 
@@ -551,6 +597,36 @@ def get_saved_clubs_for_officer(officer_name):
         
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+    
+#-----------------------------------------------------------------------
+# Zapier Webhook Ingest
+#-----------------------------------------------------------------------
+@app.route("/api/zapier_ingest", methods=["POST"])
+def zapier_ingest():
+    try:
+        data = flask.request.get_json()
+
+        post_title = data.get("post_title")
+        club_name = data.get("club_name")
+        officer_name = data.get("officer_name", "tigertunity-bot")
+        post_content = data.get("post_content")
+        post_type = data.get("post_type")
+
+        # store in parsed_posts table
+        row = database.create_parsed_post(
+            post_title=post_title,
+            club_name=club_name,
+            officer_name=officer_name,
+            post_content=post_content,
+            post_type=post_type
+        )
+
+        return flask.jsonify({"success": True, "parsed_id": row.parsed_id})
+
+    except Exception as e:
+        return flask.jsonify({"error": str(e)}), 500
+
+
 
 
 #-----------------------------------------------------------------------

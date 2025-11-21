@@ -1,3 +1,4 @@
+# tigertunity/backend/database.py 
 import os
 from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, func, ForeignKey, TIMESTAMP
 import sqlalchemy.orm
@@ -24,6 +25,16 @@ class Post(Base):
     post_type = Column(Text, nullable=False)
     edit_time = Column(TIMESTAMP, server_default=func.now())
     edit_status = Column(Boolean, default=False)
+
+class ParsedPost(Base):
+    __tablename__ = "parsed_posts"
+    parsed_id = Column(Integer, primary_key=True, autoincrement=True)
+    post_title = Column(Text, nullable=False)
+    club_name = Column(Text, nullable=False)
+    officer_name = Column(Text, nullable=False, default="tigertunity-bot")
+    post_content = Column(Text, nullable=False)
+    post_type = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
     
 class User(Base):
     __tablename__ = "user_table"
@@ -482,3 +493,28 @@ def remove_officer_from_club(club_id, officer_id):
             club.club_officers.remove(officer_id)
         session.commit()
         return True
+
+#-----------------------------------------------------------------------
+# Parsed posts operations
+#-----------------------------------------------------------------------
+
+def create_parsed_post(post_title, club_name, officer_name, post_content, post_type):
+    with sqlalchemy.orm.Session(_engine) as session:
+        row = ParsedPost(
+            post_title=post_title,
+            club_name=club_name,
+            officer_name=officer_name,
+            post_content=post_content,
+            post_type=post_type
+        )
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return row
+
+def get_all_parsed_posts(limit=None):
+    with sqlalchemy.orm.Session(_engine) as session:
+        query = session.query(ParsedPost).order_by(ParsedPost.created_at.desc())
+        if limit:
+            query = query.limit(limit)
+        return query.all()

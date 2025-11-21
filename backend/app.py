@@ -15,6 +15,7 @@ dotenv.load_dotenv()
 
 FRONTEND_URL = os.environ['FRONTEND_URL']
 APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
+UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
@@ -455,11 +456,11 @@ def delete_club(club_id):
 
         current_user = flask_jwt_extended.get_jwt_identity()
         officer = database.get_officer_by_name(current_user)
-        if officer is None:
+        authorized = officer and officer.officer_id in (club.club_officers or [])
+        if not authorized and not UNRESTRICTED_CLUB_DELETE:
             return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        if officer.officer_id not in (club.club_officers or []):
-            return flask.jsonify({'error': 'Unauthorized'}), 403
+        if not authorized and UNRESTRICTED_CLUB_DELETE:
+            print(f"[UNRESTRICTED_CLUB_DELETE] User '{current_user}' deleting club {club.club_id} without officer authorization")
 
         # 1) Delete all posts for this club
         posts = database.get_posts_by_club(club_id)
@@ -483,7 +484,7 @@ def delete_club(club_id):
         # 4) Finally, delete the club
         database.delete_club(club_id)
 
-        return flask.jsonify({'message': 'Club deleted successfully'})
+        return flask.jsonify({'message': 'Club deleted successfully', 'unrestricted': (not authorized and UNRESTRICTED_CLUB_DELETE)})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 

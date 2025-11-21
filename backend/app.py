@@ -791,6 +791,27 @@ def zapier_ingest():
     except Exception as e:
         return flask.jsonify({"error": str(e)}), 500
 
+@app.route('/api/parsed-posts/<int:parsed_id>', methods=['GET'])
+def get_parsed_post(parsed_id):
+    try:
+        row = database.get_parsed_post_by_id(parsed_id)
+        if row is None:
+            return flask.jsonify({'error': 'Parsed post not found'}), 404
+
+        d = model_to_dict(row)
+
+        return flask.jsonify({
+            "post_id": f"parsed-{d['parsed_id']}",
+            "post_title": d.get("post_title"),
+            "club_name": d.get("club_name"),
+            "officer_name": d.get("officer_name", "tigertunity-bot"),
+            "post_content": d.get("post_content"),
+            "post_type": d.get("post_type"),
+            "timestamp": d.get("created_at"),
+            "source": "parsed"
+        })
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
 
 
 

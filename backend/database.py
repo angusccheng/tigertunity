@@ -25,7 +25,9 @@ class Post(Base):
     post_type = Column(Text, nullable=False)
     edit_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     edit_status = Column(Boolean, default=False)
-<<<<<<< HEAD
+
+    event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
+    event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
 
 class ParsedPost(Base):
     __tablename__ = "parsed_posts"
@@ -36,11 +38,6 @@ class ParsedPost(Base):
     post_content = Column(Text, nullable=False)
     post_type = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
-=======
-    event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
-    event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
-    
->>>>>>> origin/main
     
 class User(Base):
     __tablename__ = "user_table"
@@ -542,3 +539,8 @@ def get_all_parsed_posts(limit=None):
         if limit:
             query = query.limit(limit)
         return query.all()
+    
+def get_parsed_post_by_id(parsed_id):
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(ParsedPost).filter(ParsedPost.parsed_id == parsed_id).first()
+

@@ -109,64 +109,11 @@ def login():
 
 @app.route('/logoutapp', methods=['GET'])
 def logoutapp():
-    # Serve a simple logout confirmation page instead of redirecting
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Logged Out - TigerTunity</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }}
-            .container {{
-                background: white;
-                padding: 3rem;
-                border-radius: 1rem;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                text-align: center;
-                max-width: 400px;
-            }}
-            h2 {{
-                color: #333;
-                margin-bottom: 1rem;
-                font-size: 1.75rem;
-            }}
-            p {{
-                color: #666;
-                margin-bottom: 2rem;
-            }}
-            a {{
-                display: inline-block;
-                background: #667eea;
-                color: white;
-                padding: 0.75rem 2rem;
-                border-radius: 0.5rem;
-                text-decoration: none;
-                font-weight: 600;
-                transition: background 0.2s;
-            }}
-            a:hover {{
-                background: #764ba2;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h2>You are logged out of TigerTunity</h2>
-            <p>Your session has been ended successfully.</p>
-            <a href="{FRONTEND_URL}">Return to Home</a>
-        </div>
-    </body>
-    </html>
-    '''
-    return html
+    # We can't invalidate the JWTs. The best we can do is ask the
+    # frontend to discard the JWTs.
+    
+    response = flask.redirect(FRONTEND_URL + '/logout')
+    return response
 
 #-----------------------------------------------------------------------
 

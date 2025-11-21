@@ -21,10 +21,11 @@ class Post(Base):
     club_id = Column(Integer, ForeignKey("club_table.club_id"), nullable=False)
     officer_id = Column(Integer, ForeignKey("officer_table.officer_id"), nullable=False)
     post_content = Column(Text, nullable=False)
-    post_time = Column(TIMESTAMP, server_default=func.now())
+    post_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     post_type = Column(Text, nullable=False)
-    edit_time = Column(TIMESTAMP, server_default=func.now())
+    edit_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     edit_status = Column(Boolean, default=False)
+<<<<<<< HEAD
 
 class ParsedPost(Base):
     __tablename__ = "parsed_posts"
@@ -35,6 +36,11 @@ class ParsedPost(Base):
     post_content = Column(Text, nullable=False)
     post_type = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+=======
+    event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
+    event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
+    
+>>>>>>> origin/main
     
 class User(Base):
     __tablename__ = "user_table"
@@ -183,6 +189,11 @@ def remove_saved_club_from_user(user_id, club_id):
         session.commit()
         return True
 
+def get_all_users():
+    """Get all users"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(User).all()
+
 #-----------------------------------------------------------------------
 # Post operations
 #-----------------------------------------------------------------------
@@ -229,7 +240,7 @@ def get_posts_by_type(post_type, limit=None):
             query = query.limit(limit)
         return query.all()
 
-def create_post(post_title, club_id, officer_id, post_content, post_type):
+def create_post(post_title, club_id, officer_id, post_content, post_type, event_starttime=None, event_endtime=None):
     """Create a new post"""
     with sqlalchemy.orm.Session(_engine) as session:
         post = Post(
@@ -237,7 +248,9 @@ def create_post(post_title, club_id, officer_id, post_content, post_type):
             club_id=club_id,
             officer_id=officer_id,
             post_content=post_content,
-            post_type=post_type
+            post_type=post_type,
+            event_starttime=event_starttime,
+            event_endtime=event_endtime
         )
         session.add(post)
         session.commit()
@@ -339,6 +352,17 @@ def add_club_to_officer(officer_id, club_id):
             # Create a new list to trigger SQLAlchemy change detection
             officer.officer_clubs = officer.officer_clubs + [club_id]
         session.commit()
+        return True
+
+def remove_club_from_officer(officer_id, club_id):
+    """Remove a club_id from officer's officer_clubs array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None or officer.officer_clubs is None:
+            return False
+        if club_id in officer.officer_clubs:
+            officer.officer_clubs = [cid for cid in (officer.officer_clubs or []) if cid != club_id]
+            session.commit()
         return True
 
 def add_post_to_officer(officer_id, post_id):

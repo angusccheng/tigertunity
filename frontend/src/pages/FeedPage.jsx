@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
+import { fetchMyOfficerClubs } from "../features/clubsApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
+import PostCard from "../components/PostCard.jsx";
 
 // Post type options
 const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
+  const [myClubs, setMyClubs] = useState([]);
+  const [clubSessionExpired, setClubSessionExpired] = useState(false);
   const [selected, setSelected] = useState(null); // read modal
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +32,8 @@ export default function FeedPage() {
     officer_name: user || "", // Auto-populate with NetID
     post_content: "",
     post_type: "Event",
+    event_starttime: "",
+    event_endtime: "",
   });
   const [errors, setErrors] = useState({});
 
@@ -40,6 +46,31 @@ export default function FeedPage() {
   useEffect(() => {
     (async () => setPosts(await fetchPosts()))();
   }, []);
+
+  // Load "My Clubs" (clubs where current user is an officer)
+  useEffect(() => {
+    (async () => {
+      try {
+        const mine = await fetchMyOfficerClubs();
+        if (mine && mine._unauthorized) {
+          setClubSessionExpired(true);
+          setMyClubs([]);
+        } else {
+          setClubSessionExpired(false);
+          setMyClubs(Array.isArray(mine) ? mine : []);
+        }
+      } catch (e) {
+        setMyClubs([]);
+      }
+    })();
+  }, []);
+
+  // When opening composer and no club selected, default to first club
+  useEffect(() => {
+    if (composerOpen && myClubs.length > 0 && !form.club_name) {
+      setForm((prev) => ({ ...prev, club_name: myClubs[0].club_name }));
+    }
+  }, [composerOpen, myClubs]);
 
   // Load saved posts to show star state
   useEffect(() => {
@@ -69,6 +100,18 @@ export default function FeedPage() {
     if (!f.officer_name.trim()) e.officer_name = "Officer name is required";
     if (!f.post_content.trim()) e.post_content = "Content is required";
     if (!f.post_type) e.post_type = "Post type is required";
+    if (f.post_type !== "Application") {
+      if (!f.event_starttime) e.event_starttime = "Start time is required";
+      if (!f.event_endtime) e.event_endtime = "End time is required";
+      if (f.event_starttime && f.event_endtime) {
+        const st = new Date(f.event_starttime);
+        const et = new Date(f.event_endtime);
+        if (et < st) e.event_endtime = "End time must be after start";
+      }
+    }
+    if (f.post_type === "Application") {
+      if (!f.event_endtime) e.event_endtime = "Deadline is required";
+    }
     return e;
   }
 
@@ -81,7 +124,15 @@ export default function FeedPage() {
 
     setSubmitting(true);
     try {
-      const response = await createPost(form);
+      // Prepare payload; convert datetime-local values to ISO strings if provided
+      const payload = { ...form };
+      if (form.event_starttime) {
+        payload.event_starttime = new Date(form.event_starttime).toISOString();
+      }
+      if (form.event_endtime) {
+        payload.event_endtime = new Date(form.event_endtime).toISOString();
+      }
+      const response = await createPost(payload);
       const created = response.entry;
       console.log(created);
       setPosts((prev) => [created, ...prev].slice(0, 20));
@@ -91,6 +142,8 @@ export default function FeedPage() {
         officer_name: user || "", // Keep NetID populated
         post_content: "",
         post_type: "Event",
+        event_starttime: "",
+        event_endtime: "",
       });
       setErrors({});
       setComposerOpen(false); // close overlay on success
@@ -205,6 +258,19 @@ export default function FeedPage() {
 
       {/* Main */}
       <main className={styles.mainContent}>
+        {clubSessionExpired && (
+          <div style={{
+            marginBottom: '0.75rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.5rem',
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            fontSize: '0.9rem'
+          }}>
+            Session expired — please log in again.
+          </div>
+        )}
         {/* Sidebar */}
         <aside className={styles.sidebar}>
           <h2 className={styles.sidebarTitle}>Filters</h2>
@@ -230,7 +296,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Club Filters</div>
               <div className={styles.filterTags}>
-                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service"].map((t) => (
+                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"].map((t) => (
                   <span key={t} className={styles.clubFilterTag}>
                     {t}
                   </span>
@@ -289,50 +355,16 @@ export default function FeedPage() {
           </div>
 
           {filteredPosts.map((p) => (
-            <article key={p.post_id} className={styles.postCard}>
-              <div
-                onClick={() => setSelected(p)}
-                className={styles.postButton}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSelected(p);
-                  }
-                }}
-              >
-                <div className={styles.postAvatar} />
-                <div className={styles.postContent}>
-                  <h3 className={styles.postTitle}>{p.post_title}</h3>
-                  <div className={styles.postMeta}>
-                    <span> <strong> Club: </strong> {p.club_name}</span>
-                    <span> <strong> Officer: </strong> {p.officer_name}</span>
-                    {p.post_time && <span>{new Date(p.post_time).toLocaleDateString()}</span>}
-                    {p.edit_status && p.edit_time && (
-                      <span className={styles.editedTag}>
-                        Edited: {new Date(p.edit_time).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className={styles.postActions}>
-                  {p.post_type && <span className={styles.postType}>{p.post_type}</span>}
-                  {user && (
-                    <button
-                      type="button"
-                      onClick={(e) => savedPosts.has(p.post_id)
-                        ? handleUnsavePost(p.post_id, e)
-                        : handleSavePost(p.post_id, e)}
-                      className={styles.saveButton}
-                      title={savedPosts.has(p.post_id) ? "Unsave post" : "Save post"}
-                    >
-                      {savedPosts.has(p.post_id) ? "★" : "☆"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </article>
+            <PostCard
+              key={p.post_id}
+              post={p}
+              onClick={() => setSelected(p)}
+              onSaveToggle={(e) => savedPosts.has(p.post_id)
+                ? handleUnsavePost(p.post_id, e)
+                : handleSavePost(p.post_id, e)}
+              isSaved={savedPosts.has(p.post_id)}
+              showSaveButton={!!user}
+            />
           ))}
         </section>
       </main>
@@ -379,12 +411,21 @@ export default function FeedPage() {
 
               <div>
                 <label className={styles.formLabel}>Club Name</label>
-                <input
-                  className={[styles.formInput, errors.club_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                <select
+                  className={[styles.formSelect, errors.club_name ? styles.formInputError : ""].filter(Boolean).join(" ")}
                   value={form.club_name}
                   onChange={(e) => setForm({ ...form, club_name: e.target.value })}
-                  placeholder="e.g., Princeton Robotics Club"
-                />
+                  disabled={myClubs.length === 0}
+                >
+                  {myClubs.map((c) => (
+                    <option key={c.club_id} value={c.club_name}>{c.club_name}</option>
+                  ))}
+                </select>
+                {myClubs.length === 0 && (
+                  <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#ef4444' }}>
+                    You must be an officer of a club to create posts.
+                  </div>
+                )}
               </div>
 
               <div>
@@ -413,25 +454,65 @@ export default function FeedPage() {
                 />
               </div>
 
+              {form.post_type === "Application" ? (
+                <div>
+                  <label className={styles.formLabel}>Deadline (date & time)</label>
+                  <input
+                    type="datetime-local"
+                    className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                    value={form.event_endtime}
+                    onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
+                  />
+                  {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className={styles.formLabel}>Event Start (date & time)</label>
+                    <input
+                      type="datetime-local"
+                      className={[styles.formInput, errors.event_starttime ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                      value={form.event_starttime}
+                      onChange={(e) => setForm({ ...form, event_starttime: e.target.value })}
+                    />
+                    {errors.event_starttime && <div className={styles.errorText}>{errors.event_starttime}</div>}
+                  </div>
+                  <div>
+                    <label className={styles.formLabel}>Event End (date & time)</label>
+                    <input
+                      type="datetime-local"
+                      className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
+                      value={form.event_endtime}
+                      onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
+                    />
+                    {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
+                  </div>
+                </>
+              )}
+
               <div className={styles.formActions}>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!window.confirm("Clear all fields? This will discard your current input.")) return;
                     setForm({
                       post_title: "",
                       club_name: "",
                       officer_name: user || "", // Keep NetID populated
                       post_content: "",
                       post_type: "Event",
-                    })
-                  }
+                      event_starttime: "",
+                      event_endtime: "",
+                    });
+                    setErrors({});
+                  }}
                   className={styles.clearButton}
                 >
                   Clear
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || myClubs.length === 0}
                   className={styles.submitButton}
                 >
                   {submitting ? "Creating…" : "Create Post"}
@@ -472,12 +553,16 @@ export default function FeedPage() {
 
               <div>
                 <label className={styles.formLabel}>Club Name</label>
-                <input
-                  className={styles.formInput}
+                <select
+                  className={styles.formSelect}
                   value={editForm.club_name}
                   onChange={(e) => setEditForm({ ...editForm, club_name: e.target.value })}
-                  placeholder="e.g., Princeton Robotics Club"
-                />
+                  disabled={myClubs.length === 0}
+                >
+                  {myClubs.map((c) => (
+                    <option key={c.club_id} value={c.club_name}>{c.club_name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -554,11 +639,46 @@ export default function FeedPage() {
                   </p>
                 </div>
                 <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
+                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString([], {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",  // <-- no seconds
+                  }) : ""}
                 </p>
                 {selected.edit_status && selected.edit_time && (
                   <p className={styles.readModalDate}>
-                    Edited: {new Date(selected.edit_time).toLocaleString()}
+                    Edited: {new Date(selected.edit_time).toLocaleString([], {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",  // <-- no seconds
+                    })}
+                  </p>
+                )}
+                {selected.post_type === "Event" && (selected.event_starttime || selected.event_endtime) && (
+                  <p className={styles.readModalDate}>
+                    <strong>Event Time: </strong>
+                    {selected.event_starttime
+                      ? new Date(selected.event_starttime).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      : "?"}
+                    {selected.event_endtime
+                      ? " – " + new Date(selected.event_endtime).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      : ""}
                   </p>
                 )}
                 <p className={styles.readModalContentText}>{selected.post_content}</p>

@@ -298,6 +298,25 @@ def list_posts():
 
 #-----------------------------------------------------------------------
 
+@app.route('/api/clubs/<int:club_id>/posts', methods=['GET'])
+def list_posts_by_club(club_id):
+    """Get posts associated with a specific club"""
+    try:
+        posts = database.get_posts_by_club(club_id) or []
+        posts_dict = [model_to_dict(post) for post in posts]
+        for i, post in enumerate(posts_dict):
+            club = database.get_club_by_id(post['club_id'])
+            officer = database.get_officer_by_id(post['officer_id'])
+            posts_dict[i]['club_name'] = getattr(club, 'club_name', None) if club else None
+            posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
+            posts_dict[i]['officer_name'] = getattr(officer, 'officer_name', None) if officer else None
+            posts_dict[i]['timestamp'] = post.get('post_time')
+        return flask.jsonify(posts_dict)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+
 #-----------------------------------------------------------------------
 # Clubs API
 #-----------------------------------------------------------------------
@@ -307,7 +326,17 @@ def list_clubs():
     """Get all clubs"""
     try:
         clubs = database.get_all_clubs()
-        clubs_dict = [model_to_dict(c) for c in clubs]
+        clubs_dict = []
+        for club in clubs:
+            entry = model_to_dict(club)
+            # Enrich with officer names
+            officer_names = []
+            for oid in (club.club_officers or []):
+                officer = database.get_officer_by_id(oid)
+                if officer:
+                    officer_names.append(officer.officer_name)
+            entry['officer_names'] = officer_names
+            clubs_dict.append(entry)
         return flask.jsonify(clubs_dict)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -328,7 +357,15 @@ def list_my_officer_clubs():
         for cid in club_ids:
             club = database.get_club_by_id(cid)
             if club is not None:
-                result.append(model_to_dict(club))
+                entry = model_to_dict(club)
+                # Enrich with officer names
+                officer_names = []
+                for oid in (club.club_officers or []):
+                    officer_obj = database.get_officer_by_id(oid)
+                    if officer_obj:
+                        officer_names.append(officer_obj.officer_name)
+                entry['officer_names'] = officer_names
+                result.append(entry)
         return flask.jsonify(result)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -344,41 +381,155 @@ def create_club():
         club_profile = data.get('club_profile') or ''
         club_type = data.get('club_type') or ''
         club_filters = data.get('club_filters') or []
+        # New: list of officer usernames provided by client (netids)
+        officer_usernames = data.get('officer_usernames') or []
 
         if not club_name:
             return flask.jsonify({'error': 'Missing club_name'}), 400
 
         username = flask_jwt_extended.get_jwt_identity()
-
-        # Ensure officer exists for creator
-        officer = database.get_officer_by_name(username)
-        if officer is None:
-            officer = database.create_officer(
-                officer_name=username,
-                saved_posts=[],
-                officer_clubs=[],
-                saved_clubs=[],
-                associated_posts=[]
-            )
+        # Normalize officer usernames: ensure creator included, lowercase, unique
+        normalized = []
+        for name in officer_usernames:
+            if isinstance(name, str):
+                n = name.strip().lower()
+                if n:
+                    normalized.append(n)
+        creator_norm = username.strip().lower()
+        if creator_norm not in normalized:
+            normalized.append(creator_norm)
+        # De-duplicate while preserving order
+        seen = set()
+        final_usernames = []
+        for n in normalized:
+            if n not in seen:
+                seen.add(n)
+                final_usernames.append(n)
 
         # Prevent duplicate clubs by name
         existing = database.get_club_by_name(club_name)
         if existing is not None:
             return flask.jsonify({'error': 'Club name already exists'}), 409
 
+        # Ensure officer records exist and collect their IDs
+        officer_ids = []
+        for uname in final_usernames:
+            officer_obj = database.get_officer_by_name(uname)
+            if officer_obj is None:
+                officer_obj = database.create_officer(
+                    officer_name=uname,
+                    saved_posts=[],
+                    officer_clubs=[],
+                    saved_clubs=[],
+                    associated_posts=[]
+                )
+            officer_ids.append(officer_obj.officer_id)
+
         club = database.create_club(
             club_name=club_name,
             club_profile=club_profile,
             club_type=club_type,
             club_filters=club_filters,
-            club_officers=[officer.officer_id]
+            club_officers=officer_ids
         )
 
-        # Link both sides
-        database.add_club_to_officer(officer.officer_id, club.club_id)
+        # Link club to each officer (officer_clubs array)
+        for oid in officer_ids:
+            database.add_club_to_officer(oid, club.club_id)
 
         entry = model_to_dict(club)
+        entry['officer_usernames'] = final_usernames
         return flask.jsonify({'message': 'Club created successfully', 'entry': entry})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/clubs/<int:club_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_club(club_id):
+    """Update a club's information.
+    Authorization: any officer listed in club_officers may edit.
+    """
+    try:
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        
+        # Update basic fields
+        if 'club_profile' in data:
+            club = database.update_club(club_id, club_profile=data['club_profile'])
+        if 'club_type' in data:
+            club = database.update_club(club_id, club_type=data['club_type'])
+        if 'club_filters' in data:
+            club = database.update_club(club_id, club_filters=data['club_filters'])
+
+        # Refresh to get latest
+        club = database.get_club_by_id(club_id)
+        entry = model_to_dict(club)
+        
+        # Enrich with officer names
+        officer_names = []
+        for oid in (club.club_officers or []):
+            officer_obj = database.get_officer_by_id(oid)
+            if officer_obj:
+                officer_names.append(officer_obj.officer_name)
+        entry['officer_names'] = officer_names
+        
+        return flask.jsonify({'message': 'Club updated successfully', 'entry': entry})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/clubs/<int:club_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def delete_club(club_id):
+    """Delete a club and cascade-delete its posts; clean officer/user references.
+    Authorization: any officer listed in club_officers may delete.
+    """
+    try:
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        # 1) Delete all posts for this club
+        posts = database.get_posts_by_club(club_id)
+        for p in posts:
+            database.delete_post(p.post_id)
+
+        # 2) Remove club from all officers' officer_clubs and saved_clubs
+        officers = database.get_all_officers()
+        for of in officers:
+            if (of.officer_clubs and club_id in of.officer_clubs):
+                database.remove_club_from_officer(of.officer_id, club_id)
+            if (of.saved_clubs and club_id in of.saved_clubs):
+                database.remove_saved_club_from_officer(of.officer_id, club_id)
+
+        # 3) Remove club from all users' saved_clubs
+        users = database.get_all_users()
+        for u in users:
+            if (u.saved_clubs and club_id in u.saved_clubs):
+                database.remove_saved_club_from_user(u.user_id, club_id)
+
+        # 4) Finally, delete the club
+        database.delete_club(club_id)
+
+        return flask.jsonify({'message': 'Club deleted successfully'})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -394,6 +545,8 @@ def create_post():
         officer_name = data.get('officer_name')
         post_content = data.get('post_content')
         post_type = data.get('post_type')
+        event_starttime = data.get('event_starttime')
+        event_endtime = data.get('event_endtime')
         
         # Validate required fields
         if not all([post_title, club_name, officer_name, post_content, post_type]):
@@ -414,13 +567,25 @@ def create_post():
             )
         
         # Create the post using SQLAlchemy
-        post = database.create_post(
-            post_title=post_title,
-            club_id=club.club_id,
-            officer_id=officer.officer_id,
-            post_content=post_content,
-            post_type=post_type
-        )
+        if event_starttime:
+            post = database.create_post(
+                post_title=post_title,
+                club_id=club.club_id,
+                officer_id=officer.officer_id,
+                post_content=post_content,
+                post_type=post_type,
+                event_starttime=event_starttime,
+                event_endtime=event_endtime
+            )
+        else:
+            post = database.create_post(
+                post_title=post_title,
+                club_id=club.club_id,
+                officer_id=officer.officer_id,
+                post_content=post_content,
+                post_type=post_type,
+                event_endtime=event_endtime
+            )
         database.add_post_to_officer(officer.officer_id, post.post_id)
         # database.add_post_to_club(club_id, post.post_id)
         

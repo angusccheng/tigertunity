@@ -175,6 +175,11 @@ def remove_saved_club_from_user(user_id, club_id):
         session.commit()
         return True
 
+def get_all_users():
+    """Get all users"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(User).all()
+
 #-----------------------------------------------------------------------
 # Post operations
 #-----------------------------------------------------------------------
@@ -333,6 +338,17 @@ def add_club_to_officer(officer_id, club_id):
             # Create a new list to trigger SQLAlchemy change detection
             officer.officer_clubs = officer.officer_clubs + [club_id]
         session.commit()
+        return True
+
+def remove_club_from_officer(officer_id, club_id):
+    """Remove a club_id from officer's officer_clubs array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None or officer.officer_clubs is None:
+            return False
+        if club_id in officer.officer_clubs:
+            officer.officer_clubs = [cid for cid in (officer.officer_clubs or []) if cid != club_id]
+            session.commit()
         return True
 
 def add_post_to_officer(officer_id, post_id):

@@ -27,6 +27,9 @@ export async function fetchMyOfficerClubs() {
         Authorization: `Bearer ${getAccess()}`,
       },
     });
+    if (r.status === 401) {
+      return { _unauthorized: true };
+    }
     return await handleResponse(r);
   } catch (err) {
     console.error("Failed to fetch my officer clubs:", err);
@@ -34,14 +37,37 @@ export async function fetchMyOfficerClubs() {
   }
 }
 
-export async function createClub({ club_name, club_profile = "", club_type = "", club_filters = [] }) {
+export async function createClub({ club_name, club_profile = "", club_type = "", club_filters = [], officer_usernames = [] }) {
+  const payload = { club_name, club_profile, club_type, club_filters, officer_usernames };
   const r = await fetch(`${API_BASE}/api/clubs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${getAccess()}`,
     },
-    body: JSON.stringify({ club_name, club_profile, club_type, club_filters }),
+    body: JSON.stringify(payload),
+  });
+  return await handleResponse(r);
+}
+
+export async function updateClub(clubId, updates) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccess()}`,
+    },
+    body: JSON.stringify(updates),
+  });
+  return await handleResponse(r);
+}
+
+export async function deleteClub(clubId) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
   });
   return await handleResponse(r);
 }

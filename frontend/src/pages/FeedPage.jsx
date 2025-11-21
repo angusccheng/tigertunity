@@ -20,6 +20,9 @@ export default function FeedPage() {
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   // Filter states - all selected by default
   const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
+  // Club type filters (defaults + dynamic). Initialize with standard types.
+  const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -233,10 +236,34 @@ export default function FeedPage() {
     });
   }
 
+  // Discover additional club types from post data and merge into active set.
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+    const discoveredTypes = new Set();
+    posts.forEach(p => { if (p.club_type) discoveredTypes.add(p.club_type); });
+    setActiveClubTypeFilters(prev => {
+      const merged = new Set(prev);
+      discoveredTypes.forEach(t => {
+        if (!merged.has(t)) merged.add(t); // auto-enable new type by default
+      });
+      return merged;
+    });
+  }, [posts]);
+
+  function toggleClubTypeFilter(type) {
+    setActiveClubTypeFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }
+
   // Filter posts based on active filters
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
     const matchesPostFilter = activePostFilters.has(post.post_type);
+    // Check club type filters (include post if missing club_type so we don't hide incomplete data)
+    const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
 
     // Check date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
@@ -249,8 +276,11 @@ export default function FeedPage() {
       }
     }
 
-    return matchesPostFilter;
+    return matchesPostFilter && matchesClubType;
   });
+  // Derived sorted list of unique club types for rendering (union of defaults + discovered)
+  const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
+  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
 
   return (
     <div className={styles.pageContainer}>
@@ -292,14 +322,19 @@ export default function FeedPage() {
               </div>
             </section>
 
-            {/* Club Filters */}
+            {/* Club Type Filters */}
             <section className={styles.filterSection}>
-              <div className={styles.filterLabel}>Club Filters</div>
+              <div className={styles.filterLabel}>Club Type Filters</div>
               <div className={styles.filterTags}>
-                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"].map((t) => (
-                  <span key={t} className={styles.clubFilterTag}>
-                    {t}
-                  </span>
+                {allClubTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleClubTypeFilter(type)}
+                    className={`${styles.clubFilterTag} ${activeClubTypeFilters.has(type) ? styles.filterActive : styles.filterInactive}`}
+                  >
+                    {type}
+                  </button>
                 ))}
               </div>
             </section>

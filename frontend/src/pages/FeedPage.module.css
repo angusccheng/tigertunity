@@ -95,6 +95,27 @@
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   color: #404040;
+  cursor: pointer;
+  background: none;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
+}
+
+.clubFilterTag.filterActive {
+  background: rgba(253, 186, 116, 0.6);
+  color: #9a3412;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.clubFilterTag.filterInactive {
+  background: #fafafa;
+  color: #a3a3a3;
+  border-color: #e5e5e5;
+  opacity: 0.6;
+}
+
+.clubFilterTag:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 /* Date Filter */

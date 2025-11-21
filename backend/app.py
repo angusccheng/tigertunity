@@ -242,9 +242,12 @@ def list_posts():
         for i, post in enumerate(posts_dict):
             club_id = post['club_id']
             officer_id = post['officer_id']
-            club_name = database.get_club_by_id(club_id).club_name
+            club_obj = database.get_club_by_id(club_id)
+            club_name = club_obj.club_name if club_obj else None
+            club_type = getattr(club_obj, 'club_type', None) if club_obj else None
             officer_name = database.get_officer_by_id(officer_id).officer_name
             posts_dict[i]['club_name'] = club_name
+            posts_dict[i]['club_type'] = club_type
             posts_dict[i]['officer_name'] = officer_name
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
@@ -551,6 +554,7 @@ def create_post():
             club = database.get_club_by_id(entry.get('club_id'))
             if club is not None:
                 entry['club_name'] = getattr(club, 'club_name', None)
+                entry['club_type'] = getattr(club, 'club_type', None)
         except Exception:
             pass
         try:

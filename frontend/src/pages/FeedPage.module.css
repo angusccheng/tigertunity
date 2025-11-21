@@ -101,7 +101,7 @@
 }
 
 .clubFilterTag.filterActive {
-  background: rgba(253, 186, 116, 0.6);
+  background: #fff7ed;
   color: #9a3412;
   border-color: rgba(253, 186, 116, 0.6);
 }

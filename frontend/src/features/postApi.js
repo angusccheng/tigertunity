@@ -25,8 +25,19 @@ export async function fetchPosts() {
   }
 }
 
+export async function fetchPostsByClub(clubId) {
+  try {
+    const r = await fetch(`${API_BASE}/api/clubs/${clubId}/posts`);
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch club posts:", err);
+    return [];
+  }
+}
+
 export async function createPost(input) {
   try {
+    console.log(input);
     const r = await fetch(`${API_BASE}/api/posts`, {
       method: "POST",
       headers: {

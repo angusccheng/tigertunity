@@ -28,6 +28,8 @@ export default function FeedPage() {
   const [endDate, setEndDate] = useState("");
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+  // Sort state: 'post_date' or 'event_start'
+  const [sortMode, setSortMode] = useState('post_date');
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -297,6 +299,22 @@ export default function FeedPage() {
 
     return matchesPostFilter && matchesClubType;
   });
+
+  // Sort filtered posts based on selected sort mode
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (sortMode === 'event_start') {
+      // Sort by event_starttime (soonest/upcoming first); posts without starttime go to end
+      const aTime = a.event_starttime ? new Date(a.event_starttime).getTime() : Infinity;
+      const bTime = b.event_starttime ? new Date(b.event_starttime).getTime() : Infinity;
+      return aTime - bTime;
+    } else {
+      // Default: sort by post_time (newest first)
+      const aTime = a.post_time ? new Date(a.post_time).getTime() : 0;
+      const bTime = b.post_time ? new Date(b.post_time).getTime() : 0;
+      return bTime - aTime;
+    }
+  });
+
   // Derived sorted list of unique club types for rendering (union of defaults + discovered)
   const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
   const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
@@ -419,9 +437,22 @@ export default function FeedPage() {
             <span className={styles.dateBadge}>
               Today's date: {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' })}
             </span>
-            <button type="button" className={styles.sortButton}>
-              Sort by post date
-            </button>
+            <div className={styles.sortTabs}>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'post_date' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('post_date')}
+              >
+                Sort by post date
+              </button>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'event_start' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('event_start')}
+              >
+                Sort by event start
+              </button>
+            </div>
           </div>
 
           {filteredPosts.length === 0 && searchQuery.trim() ? (
@@ -429,7 +460,7 @@ export default function FeedPage() {
               No posts match your search for "{searchQuery}"
             </div>
           ) : (
-            filteredPosts.map((p) => (
+            sortedPosts.map((p) => (
               <PostCard
                 key={p.post_id}
                 post={p}
@@ -766,20 +797,32 @@ export default function FeedPage() {
                   <p className={styles.readModalTypeValue}>{selected.post_type}</p>
                 </div>
                 <div className={styles.readModalActions}>
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick(selected)}
-                    className={styles.editButton}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selected)}
-                    className={styles.deleteButton}
-                  >
-                    Delete
-                  </button>
+                  {(() => {
+                    const officerClubNames = new Set(myClubs.map(c => (c.club_name || '').toLowerCase()));
+                    const canModify = selected.club_name && officerClubNames.has(selected.club_name.toLowerCase());
+                    return (
+                      <>
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(selected)}
+                            className={styles.editButton}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selected)}
+                            className={styles.deleteButton}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </aside>
             </div>

@@ -117,52 +117,111 @@ def logoutapp():
     <head>
         <title>Logged Out - TigerTunity</title>
         <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 min-height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(to bottom right, #fafafa, #f5f5f5);
             }}
-            .container {{
-                background: white;
-                padding: 3rem;
-                border-radius: 1rem;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            .content {{
                 text-align: center;
-                max-width: 400px;
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+                padding: 0 1rem;
             }}
-            h2 {{
-                color: #333;
-                margin-bottom: 1rem;
-                font-size: 1.75rem;
+            .logo-section {{
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
             }}
-            p {{
-                color: #666;
-                margin-bottom: 2rem;
+            .logo-container {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
             }}
-            a {{
-                display: inline-block;
-                background: #667eea;
-                color: white;
-                padding: 0.75rem 2rem;
-                border-radius: 0.5rem;
-                text-decoration: none;
+            .logo-icon {{
+                height: 3rem;
+                width: 3rem;
+                border-radius: 0.125rem;
+                background: #ff9000;
+            }}
+            .logo-title {{
+                font-size: 3rem;
+                font-weight: 700;
+                margin: 0;
+            }}
+            .logo-title-main {{
+                color: #171717;
+            }}
+            .logo-title-accent {{
+                color: #ff9000;
+            }}
+            .message-section {{
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }}
+            .title {{
+                font-size: 1.5rem;
                 font-weight: 600;
-                transition: background 0.2s;
+                color: #171717;
+                margin: 0;
             }}
-            a:hover {{
-                background: #764ba2;
+            .subtitle {{
+                font-size: 1rem;
+                color: #525252;
+                margin: 0;
+            }}
+            .home-button {{
+                display: inline-block;
+                text-decoration: none;
+                border-radius: 0.5rem;
+                background: #ff9000;
+                padding: 0.75rem 2rem;
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: white;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s, filter 0.2s;
+                border: none;
+                cursor: pointer;
+            }}
+            .home-button:hover {{
+                transform: scale(1.05);
+                filter: brightness(1.1);
+            }}
+            .home-button:focus {{
+                outline: 2px solid #ff9000;
+                outline-offset: 2px;
             }}
         </style>
     </head>
     <body>
-        <div class="container">
-            <h2>You are logged out of TigerTunity</h2>
-            <p>Your session has been ended successfully.</p>
-            <a href="{FRONTEND_URL}">Return to Home</a>
+        <div class="content">
+            <div class="logo-section">
+                <div class="logo-container">
+                    <div class="logo-icon"></div>
+                    <h1 class="logo-title">
+                        <span class="logo-title-main">Tiger</span><span class="logo-title-accent">Tunity</span>
+                    </h1>
+                </div>
+            </div>
+            <div class="message-section">
+                <h2 class="title">You are logged out of Tigertunity</h2>
+                <p class="subtitle">Your session has been ended successfully.</p>
+            </div>
+            <div>
+                <a href="{FRONTEND_URL}" class="home-button">Return to Home</a>
+            </div>
         </div>
     </body>
     </html>
@@ -603,16 +662,57 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post"""
+    """Update a post.
+    Authorization: user must be an officer of the club that owns the post.
+    """
     try:
-        data = flask.request.get_json()
-        post = database.update_post(post_id, **data)
-        if post is None:
+        # Fetch existing post
+        existing = database.get_post_by_id(post_id)
+        if existing is None:
             return flask.jsonify({'error': 'Post not found'}), 404
+
+        # Determine club and auth context
+        club = database.get_club_by_id(existing.club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found for post'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        # Apply updates
+        data = flask.request.get_json() or {}
+        updated = database.update_post(post_id, **data)
+        if updated is None:
+            return flask.jsonify({'error': 'Failed to update'}), 500
+
+        entry = model_to_dict(updated)
+        # Enrich response similar to list endpoints
+        try:
+            club_obj = database.get_club_by_id(entry.get('club_id'))
+            if club_obj is not None:
+                entry['club_name'] = getattr(club_obj, 'club_name', None)
+                entry['club_type'] = getattr(club_obj, 'club_type', None)
+        except Exception:
+            pass
+        try:
+            officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+            if officer_obj is not None:
+                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+        except Exception:
+            pass
+        entry['timestamp'] = entry.get('post_time')
+
         return flask.jsonify({
             'message': 'Post updated successfully',
-            'entry': model_to_dict(post)
+            'entry': entry,
+            'editable': True  # Confirms caller had edit rights
         })
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

@@ -6,8 +6,8 @@ import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
-// Post type options
-const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
+// Post type options (extended with Workshop, Other)
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -19,7 +19,7 @@ export default function FeedPage() {
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   // Filter states - all selected by default
-  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
+  const [activePostFilters, setActivePostFilters] = useState(new Set(POST_TYPES));
   // Club type filters (defaults + dynamic). Initialize with standard types.
   const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
@@ -328,7 +328,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Event", "Application", "Food", "Speaker", "Social", "General Meeting"].map((t) => (
+                {POST_TYPES.map((t) => (
                   <button
                     key={t}
                     type="button"

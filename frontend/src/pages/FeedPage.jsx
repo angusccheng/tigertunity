@@ -272,10 +272,14 @@ export default function FeedPage() {
     // Check date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
       const postDate = new Date(post.post_time);
-      if (startDate && new Date(startDate) > postDate) return false;
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(0, 0, 0, 0); // Start of the day
+        if (startDateTime > postDate) return false;
+      }
       if (endDate) {
         const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999); // Include the entire end date
+        endDateTime.setHours(23, 59, 59, 999); // End of the day
         if (endDateTime < postDate) return false;
       }
     }

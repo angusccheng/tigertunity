@@ -196,6 +196,36 @@ export async function updateNotepad(officerName, notepad) {
   }
 }
 
+export async function fetchPreferences(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/preferences`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch preferences:", err);
+    return { preferences: [] };
+  }
+}
+
+export async function updatePreferences(officerName, preferences) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/preferences`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ preferences }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update preferences:", err);
+    throw err;
+  }
+}
 export async function fetchDisplayName(officerName) {
   try {
     const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/display-name`, {

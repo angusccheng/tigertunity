@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
-import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName } from "../features/postApi.js";
+import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
@@ -16,6 +16,9 @@ export default function ProfilePage() {
   const [notepadLoading, setNotepadLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(true);
+  const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
+  const [preferences, setPreferences] = useState(new Set());
+  const [prefsLoading, setPrefsLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -71,6 +74,25 @@ export default function ProfilePage() {
     loadDisplayName();
   }, [user]);
 
+  useEffect(() => {
+    async function loadPreferences() {
+      if (!user) {
+        setPrefsLoading(false);
+        return;
+      }
+      try {
+        const resp = await fetchPreferences(user);
+        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
+        setPreferences(new Set(arr));
+      } catch (err) {
+        console.error("Failed to load preferences:", err);
+      } finally {
+        setPrefsLoading(false);
+      }
+    }
+    loadPreferences();
+  }, [user]);
+
   async function handleUnsavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
     if (!user) return;
@@ -102,6 +124,17 @@ export default function ProfilePage() {
       console.error("Failed to save display name:", err);
       alert("Failed to save display name. Please try again.");
     }
+  }
+
+  async function togglePreference(type) {
+    if (!user) return;
+    setPreferences(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      // Fire-and-forget save
+      updatePreferences(user, Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
+      return next;
+    });
   }
 
   // Placeholder data - replace with actual API calls later
@@ -173,6 +206,24 @@ export default function ProfilePage() {
                     {notepad}
                   </div>
                 )}
+              </div>
+
+              {/* Preferences Section */}
+              <div className={styles.bioSection}>
+                <h3 className={styles.bioTitle}>My Preferences</h3>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+                  {POST_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => togglePreference(t)}
+                      disabled={prefsLoading}
+                      className={preferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

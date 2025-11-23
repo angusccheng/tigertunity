@@ -13,14 +13,23 @@ import database
 app = flask.Flask(__name__)
 dotenv.load_dotenv()
 
-FRONTEND_URL = os.environ['FRONTEND_URL']
-APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
+# Allow smoother local dev if env vars are not set
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+APP_SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'dev-secret-key')
 UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
 # CORS configuration for API endpoints
-flask_cors.CORS(app, resources={r'/api/*': {'origins': FRONTEND_URL}})
+_allowed_origins = set()
+if FRONTEND_URL:
+    _allowed_origins.add(FRONTEND_URL)
+# Common dev origins
+_allowed_origins.update({
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+})
+flask_cors.CORS(app, resources={r'/api/*': {'origins': list(_allowed_origins)}})
 
 # JWT Configuration
 app.config['JWT_SECRET_KEY'] = APP_SECRET_KEY
@@ -128,6 +137,10 @@ def logoutcas():
 #-----------------------------------------------------------------------
 # API routes:
 #-----------------------------------------------------------------------
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    return flask.jsonify({'status': 'ok'}), 200
 
 @app.route('/api/gettokens', methods=['GET'])
 def get_tokens():
@@ -817,6 +830,52 @@ def update_officer_notepad(officer_name):
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/api/officers/<string:officer_name>/preferences', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_preferences(officer_name):
+    """Get saved post type preferences for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'preferences': []})
+
+        prefs = getattr(officer, 'preferences', []) or []
+        return flask.jsonify({'preferences': prefs})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/preferences', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_preferences(officer_name):
+    """Update saved post type preferences for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        preferences = data.get('preferences') or []
+        if not isinstance(preferences, list):
+            return flask.jsonify({'error': 'preferences must be a list of strings'}), 400
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, preferences=preferences)
+        return flask.jsonify({'message': 'Preferences updated successfully', 'preferences': preferences})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
 @app.route('/api/officers/<string:officer_name>/display-name', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_officer_display_name(officer_name):

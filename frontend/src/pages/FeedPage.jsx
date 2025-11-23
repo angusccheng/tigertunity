@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost, fetchPreferences } from "../features/postApi.js";
 import { fetchMyOfficerClubs } from "../features/clubsApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
@@ -38,6 +38,10 @@ export default function FeedPage() {
   const [sortMode, setSortMode] = useState('post_date');
   // Post limit state
   const [postLimit, setPostLimit] = useState(50);
+  // My Preferences
+  const [preferences, setPreferences] = useState(new Set());
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -97,6 +101,24 @@ export default function FeedPage() {
         setSavedPosts(ids);
       } catch (e) {
         // ignore
+      }
+    })();
+  }, [user]);
+
+  // Load user preferences
+  useEffect(() => {
+    (async () => {
+      setPrefsLoaded(false);
+      setPreferences(new Set());
+      if (!user) { setPrefsLoaded(true); return; }
+      try {
+        const resp = await fetchPreferences(user);
+        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
+        setPreferences(new Set(arr));
+      } catch (e) {
+        // ignore
+      } finally {
+        setPrefsLoaded(true);
       }
     })();
   }, [user]);
@@ -270,10 +292,21 @@ export default function FeedPage() {
     });
   }
 
+  // Compute effective post filters (apply My Preferences intersection if enabled)
+  const effectivePostFilters = (() => {
+    if (myPrefsEnabled) {
+      if (preferences.size === 0) return new Set();
+      const inter = new Set();
+      activePostFilters.forEach((t) => { if (preferences.has(t)) inter.add(t); });
+      return inter;
+    }
+    return activePostFilters;
+  })();
+
   // Filter posts based on active filters
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
-    const matchesPostFilter = activePostFilters.has(post.post_type);
+    const matchesPostFilter = effectivePostFilters.has(post.post_type);
     // Check club type filters (include post if missing club_type so we don't hide incomplete data)
     const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
 
@@ -402,6 +435,32 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={myPrefsEnabled}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      if (!user || preferences.size === 0) return; // ignore if not available
+                      setMyPrefsEnabled(next);
+                    }}
+                    disabled={!user || preferences.size === 0}
+                    className={styles.dateCheckbox}
+                  />
+                  Apply My Preferences
+                </label>
+              </div>
+              {!user && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  Log in to use My Preferences.
+                </div>
+              )}
+              {user && prefsLoaded && preferences.size === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No preferences set yet — configure them on your Profile.
+                </div>
+              )}
             </section>
 
             {/* Club Type Filters */}

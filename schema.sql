@@ -29,8 +29,10 @@ CREATE TABLE officer_table (
   officer_clubs INTEGER[],
   associated_posts INTEGER[],
   notepad TEXT NOT NULL,
-  officer_status BOOL DEFAULT FALSE
-  admin_status BOOL DEFAULT FALSE
+  officer_status BOOL DEFAULT FALSE,
+  admin_status BOOL DEFAULT FALSE,
+  display_name TEXT,
+  officer_preferences TEXT[]
 )
 
 CREATE TABLE club_table (

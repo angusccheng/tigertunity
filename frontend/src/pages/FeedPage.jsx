@@ -30,6 +30,8 @@ export default function FeedPage() {
     const [eventDateFilterEnabled, setEventDateFilterEnabled] = useState(false);
     const [eventStartDate, setEventStartDate] = useState("");
     const [eventEndDate, setEventEndDate] = useState("");
+  // Hide past events filter
+  const [hidePastEvents, setHidePastEvents] = useState(false);
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   // Sort state: 'post_date' or 'event_start'
@@ -313,6 +315,13 @@ export default function FeedPage() {
       }
     }
 
+    // Check hide past events filter
+    if (hidePastEvents && post.event_endtime) {
+      const now = new Date();
+      const endTime = new Date(post.event_endtime);
+      if (endTime < now) return false; // Hide if event has ended
+    }
+
     // Check search query (case-insensitive, partial matching across all fields)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -484,6 +493,21 @@ export default function FeedPage() {
                     </div>
                   </div>
               )}
+            </section>
+
+            {/* Hide Past Events Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={hidePastEvents}
+                    onChange={(e) => setHidePastEvents(e.target.checked)}
+                    className={styles.dateCheckbox}
+                  />
+                  Hide Past Events
+                </label>
+              </div>
             </section>
           </div>
         </aside>        {/* Feed */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
-import { fetchSavedPosts, unsavePost } from "../features/postApi.js";
+import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
@@ -11,8 +11,9 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
-  const [bio, setBio] = useState("Click to add a bio...");
-  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [notepad, setNotepad] = useState("Click to add notes...");
+  const [isEditingNotepad, setIsEditingNotepad] = useState(false);
+  const [notepadLoading, setNotepadLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -32,6 +33,24 @@ export default function ProfilePage() {
     loadSavedPosts();
   }, [user]);
 
+  useEffect(() => {
+    async function loadNotepad() {
+      if (!user) {
+        setNotepadLoading(false);
+        return;
+      }
+      try {
+        const response = await fetchNotepad(user);
+        setNotepad(response.notepad || "Click to add notes...");
+      } catch (err) {
+        console.error("Failed to load notepad:", err);
+      } finally {
+        setNotepadLoading(false);
+      }
+    }
+    loadNotepad();
+  }, [user]);
+
   async function handleUnsavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
     if (!user) return;
@@ -41,6 +60,17 @@ export default function ProfilePage() {
       setSavedPosts(prev => prev.filter(p => p.post_id !== postId));
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  async function handleSaveNotepad() {
+    if (!user) return;
+    try {
+      await updateNotepad(user, notepad);
+      setIsEditingNotepad(false);
+    } catch (err) {
+      console.error("Failed to save notepad:", err);
+      alert("Failed to save notepad. Please try again.");
     }
   }
 
@@ -66,36 +96,47 @@ export default function ProfilePage() {
             {/* User Profile Section */}
             <div className={styles.profileCard}>
               <div className={styles.profileHeader}>
-                {/* Profile Picture Placeholder */}
-                <div className={styles.profileAvatar} />
-
                 {/* User Info */}
                 <div className={styles.profileInfo}>
-                  <h2 className={styles.profileName}>
-                    {user || "Username"}
-                  </h2>
-                  <p className={styles.profileClass}>Class of 2027</p>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>NetID:</label>
+                    <span className={styles.profileValue}>{user || "Username"}</span>
+                  </div>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>Name:</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your name"
+                      className={styles.profileInput}
+                    />
+                  </div>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>Class:</label>
+                    <span className={styles.profileValue}>Class of 2027</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Bio Section */}
+              {/* Notepad Section */}
               <div className={styles.bioSection}>
-                <h3 className={styles.bioTitle}>Bio</h3>
-                {isEditingBio ? (
+                <h3 className={styles.bioTitle}>Notepad</h3>
+                {notepadLoading ? (
+                  <div className={styles.bioDisplay}>Loading...</div>
+                ) : isEditingNotepad ? (
                   <textarea
                     className={styles.bioTextarea}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    onBlur={() => setIsEditingBio(false)}
+                    value={notepad}
+                    onChange={(e) => setNotepad(e.target.value)}
+                    onBlur={handleSaveNotepad}
                     autoFocus
                     rows={4}
                   />
                 ) : (
                   <div
                     className={styles.bioDisplay}
-                    onClick={() => setIsEditingBio(true)}
+                    onClick={() => setIsEditingNotepad(true)}
                   >
-                    {bio}
+                    {notepad}
                   </div>
                 )}
               </div>

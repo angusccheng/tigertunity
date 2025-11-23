@@ -765,6 +765,51 @@ def unsave_post_from_officer(officer_name, post_id):
         return flask.jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/officers/<string:officer_name>/notepad', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_notepad(officer_name):
+    """Get notepad for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'notepad': ''})
+
+        return flask.jsonify({'notepad': officer.notepad or ''})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/notepad', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_notepad(officer_name):
+    """Update notepad for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        notepad = data.get('notepad', '')
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            # Create officer if doesn't exist
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, notepad=notepad)
+        return flask.jsonify({'message': 'Notepad updated successfully', 'notepad': notepad})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 @app.route('/api/officers/<string:officer_name>/saved-posts', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_saved_posts_for_officer(officer_name):

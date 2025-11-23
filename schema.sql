@@ -9,6 +9,9 @@ CREATE TABLE post_table (
   post_type TEXT NOT NULL,
   edit_time TIMESTAMP DEFAULT NOW(),
   edit_status BOOL DEFAULT FALSE
+  post_filters TEXT[],
+  location TEXT,
+  link TEXT
 )
 
 CREATE TABLE user_table (
@@ -24,7 +27,10 @@ CREATE TABLE officer_table (
   saved_posts INTEGER[],
   saved_clubs INTEGER[],
   officer_clubs INTEGER[],
-  associated_posts INTEGER[]
+  associated_posts INTEGER[],
+  notepad TEXT NOT NULL,
+  officer_status BOOL DEFAULT FALSE
+  admin_status BOOL DEFAULT FALSE
 )
 
 CREATE TABLE club_table (

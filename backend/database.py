@@ -44,6 +44,7 @@ class Officer(Base):
     saved_clubs = Column(ARRAY(Integer), default=[])
     officer_clubs = Column(ARRAY(Integer), default=[])
     associated_posts = Column(ARRAY(Integer), default=[])
+    notepad = Column(Text, default='')
 
 
 class Club(Base):

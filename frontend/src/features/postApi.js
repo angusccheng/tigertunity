@@ -165,6 +165,37 @@ export async function fetchSavedPosts(officerName) {
   }
 }
 
+export async function fetchNotepad(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/notepad`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch notepad:", err);
+    return { notepad: '' };
+  }
+}
+
+export async function updateNotepad(officerName, notepad) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/notepad`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ notepad }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update notepad:", err);
+    throw err;
+  }
+}
+
 export async function updatePost(postId, updatedData) {
   try {
     const r = await fetch(`${API_BASE}/api/posts/${postId}`, {

@@ -485,25 +485,6 @@ export default function FeedPage() {
                   </div>
               )}
             </section>
-
-            {/* Post Limit Control */}
-            <section className={styles.filterSection}>
-              <div className={styles.filterLabel}>Display Limit</div>
-              <div className={styles.postLimitControl}>
-                <label className={styles.postLimitLabel}>
-                  Show last
-                  <input
-                    type="number"
-                    min="1"
-                    max="200"
-                    value={postLimit}
-                    onChange={(e) => setPostLimit(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
-                    className={styles.postLimitInput}
-                  />
-                  posts
-                </label>
-              </div>
-            </section>
           </div>
         </aside>        {/* Feed */}
         <section className={styles.feedSection}>
@@ -542,6 +523,20 @@ export default function FeedPage() {
               >
                 Sort by event start
               </button>
+            </div>
+            <div className={styles.postLimitControl}>
+              <label className={styles.postLimitLabel}>
+                Show last
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={postLimit}
+                  onChange={(e) => setPostLimit(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                  className={styles.postLimitInput}
+                />
+                posts
+              </label>
             </div>
           </div>
 

@@ -8,6 +8,8 @@ export default function LogoutPage() {
     clearTokens();
   }, []);
 
+  console.log("we are loading the logout page")
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.content}>

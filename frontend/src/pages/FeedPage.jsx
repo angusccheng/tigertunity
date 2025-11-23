@@ -676,9 +676,14 @@ export default function FeedPage() {
                   <input
                     type="datetime-local"
                     className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                    value={form.event_endtime}
+                    value={form.event_endtime || ""}
                     onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
                   />
+                  {!form.event_endtime && !errors.event_endtime && (
+                    <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                      Click to select a deadline
+                    </div>
+                  )}
                   {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
                 </div>
               ) : (
@@ -688,9 +693,14 @@ export default function FeedPage() {
                     <input
                       type="datetime-local"
                       className={[styles.formInput, errors.event_starttime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                      value={form.event_starttime}
+                      value={form.event_starttime || ""}
                       onChange={(e) => setForm({ ...form, event_starttime: e.target.value })}
                     />
+                    {!form.event_starttime && !errors.event_starttime && (
+                      <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                        Click to select start time
+                      </div>
+                    )}
                     {errors.event_starttime && <div className={styles.errorText}>{errors.event_starttime}</div>}
                   </div>
                   <div>
@@ -698,9 +708,14 @@ export default function FeedPage() {
                     <input
                       type="datetime-local"
                       className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                      value={form.event_endtime}
+                      value={form.event_endtime || ""}
                       onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
                     />
+                    {!form.event_endtime && !errors.event_endtime && (
+                      <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                        Click to select end time
+                      </div>
+                    )}
                     {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
                   </div>
                 </>

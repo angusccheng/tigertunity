@@ -556,6 +556,15 @@
   outline-offset: 2px;
 }
 
+/* Style empty datetime-local inputs to appear grayed out */
+.formInput[type="datetime-local"]:invalid {
+  color: #a3a3a3;
+}
+
+.formInput[type="datetime-local"]:focus:invalid {
+  color: #404040;
+}
+
 .formInputError {
   border-color: #f87171;
 }

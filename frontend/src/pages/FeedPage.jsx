@@ -272,15 +272,18 @@ export default function FeedPage() {
     // Check date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
       const postDate = new Date(post.post_time);
+      // Normalize post date to local midnight for comparison
+      const postDateOnly = new Date(postDate.getFullYear(), postDate.getMonth(), postDate.getDate());
+      
       if (startDate) {
-        const startDateTime = new Date(startDate);
-        startDateTime.setHours(0, 0, 0, 0); // Start of the day
-        if (startDateTime > postDate) return false;
+        const startDateTime = new Date(startDate + 'T00:00:00'); // Parse as local time
+        const startDateOnly = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
+        if (postDateOnly < startDateOnly) return false;
       }
       if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999); // End of the day
-        if (endDateTime < postDate) return false;
+        const endDateTime = new Date(endDate + 'T23:59:59'); // Parse as local time
+        const endDateOnly = new Date(endDateTime.getFullYear(), endDateTime.getMonth(), endDateTime.getDate());
+        if (postDateOnly > endDateOnly) return false;
       }
     }
 

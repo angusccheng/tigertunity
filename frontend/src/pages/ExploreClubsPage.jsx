@@ -26,6 +26,8 @@ export default function ExploreClubsPage() {
   const [selectedPost, setSelectedPost] = useState(null);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [officerInput, setOfficerInput] = useState("");
@@ -218,11 +220,45 @@ export default function ExploreClubsPage() {
   const displayMyClubs = myClubs.filter(c => {
     if (!c.club_type) return true;
     // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
-    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    
+    // Check search query (case-insensitive, partial matching across searchable fields)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        c.club_name,
+        c.club_profile,
+        c.club_type,
+        ...(c.officer_names || [])
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      return matchesType && matchesSearch;
+    }
+    
+    return matchesType;
   });
   const displayAllClubs = allClubs.filter(c => {
     if (!c.club_type) return true;
-    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    
+    // Check search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        c.club_name,
+        c.club_profile,
+        c.club_type,
+        ...(c.officer_names || [])
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      return matchesType && matchesSearch;
+    }
+    
+    return matchesType;
   });
 
   // Derive dynamic types for rendering filter buttons
@@ -293,6 +329,23 @@ export default function ExploreClubsPage() {
             Session expired — please log in again.
           </div>
         )}
+        {/* Search Bar */}
+        <div className={styles.searchContainer}>
+          <input
+            type="text"
+            placeholder="Search clubs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+          <div className={styles.searchResultCount}>
+            {searchQuery.trim() && (
+              <span>
+                {tab === "mine" ? displayMyClubs.length : displayAllClubs.length} {((tab === "mine" ? displayMyClubs.length : displayAllClubs.length) === 1) ? 'result' : 'results'} found
+              </span>
+            )}
+          </div>
+        </div>
         {/* Club Type Filters (including dynamic types) */}
         <div className={styles.typeFiltersBar}>
           {allFilterTypes.map(t => (

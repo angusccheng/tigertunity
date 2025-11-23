@@ -15,6 +15,7 @@ dotenv.load_dotenv()
 
 FRONTEND_URL = os.environ['FRONTEND_URL']
 APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
+UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
@@ -109,11 +110,123 @@ def login():
 
 @app.route('/logoutapp', methods=['GET'])
 def logoutapp():
-    # We can't invalidate the JWTs. The best we can do is ask the
-    # frontend to discard the JWTs.
-    
-    response = flask.redirect(FRONTEND_URL + '/logout')
-    return response
+    # Serve a simple logout confirmation page instead of redirecting
+    html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Logged Out - TigerTunity</title>
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background: linear-gradient(to bottom right, #fafafa, #f5f5f5);
+            }}
+            .content {{
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+                padding: 0 1rem;
+            }}
+            .logo-section {{
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }}
+            .logo-container {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+            }}
+            .logo-icon {{
+                height: 3rem;
+                width: 3rem;
+                border-radius: 0.125rem;
+                background: #ff9000;
+            }}
+            .logo-title {{
+                font-size: 3rem;
+                font-weight: 700;
+                margin: 0;
+            }}
+            .logo-title-main {{
+                color: #171717;
+            }}
+            .logo-title-accent {{
+                color: #ff9000;
+            }}
+            .message-section {{
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }}
+            .title {{
+                font-size: 1.5rem;
+                font-weight: 600;
+                color: #171717;
+                margin: 0;
+            }}
+            .subtitle {{
+                font-size: 1rem;
+                color: #525252;
+                margin: 0;
+            }}
+            .home-button {{
+                display: inline-block;
+                text-decoration: none;
+                border-radius: 0.5rem;
+                background: #ff9000;
+                padding: 0.75rem 2rem;
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: white;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s, filter 0.2s;
+                border: none;
+                cursor: pointer;
+            }}
+            .home-button:hover {{
+                transform: scale(1.05);
+                filter: brightness(1.1);
+            }}
+            .home-button:focus {{
+                outline: 2px solid #ff9000;
+                outline-offset: 2px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="content">
+            <div class="logo-section">
+                <div class="logo-container">
+                    <div class="logo-icon"></div>
+                    <h1 class="logo-title">
+                        <span class="logo-title-main">Tiger</span><span class="logo-title-accent">Tunity</span>
+                    </h1>
+                </div>
+            </div>
+            <div class="message-section">
+                <h2 class="title">You are logged out of Tigertunity</h2>
+                <p class="subtitle">Your session has been ended successfully.</p>
+            </div>
+            <div>
+                <a href="{FRONTEND_URL}" class="home-button">Return to Home</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    return html
 
 #-----------------------------------------------------------------------
 
@@ -188,9 +301,12 @@ def list_posts():
         for i, post in enumerate(posts_dict):
             club_id = post['club_id']
             officer_id = post['officer_id']
-            club_name = database.get_club_by_id(club_id).club_name
+            club_obj = database.get_club_by_id(club_id)
+            club_name = club_obj.club_name if club_obj else None
+            club_type = getattr(club_obj, 'club_type', None) if club_obj else None
             officer_name = database.get_officer_by_id(officer_id).officer_name
             posts_dict[i]['club_name'] = club_name
+            posts_dict[i]['club_type'] = club_type
             posts_dict[i]['officer_name'] = officer_name
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
@@ -402,11 +518,11 @@ def delete_club(club_id):
 
         current_user = flask_jwt_extended.get_jwt_identity()
         officer = database.get_officer_by_name(current_user)
-        if officer is None:
+        authorized = officer and officer.officer_id in (club.club_officers or [])
+        if not authorized and not UNRESTRICTED_CLUB_DELETE:
             return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        if officer.officer_id not in (club.club_officers or []):
-            return flask.jsonify({'error': 'Unauthorized'}), 403
+        if not authorized and UNRESTRICTED_CLUB_DELETE:
+            print(f"[UNRESTRICTED_CLUB_DELETE] User '{current_user}' deleting club {club.club_id} without officer authorization")
 
         # 1) Delete all posts for this club
         posts = database.get_posts_by_club(club_id)
@@ -430,7 +546,7 @@ def delete_club(club_id):
         # 4) Finally, delete the club
         database.delete_club(club_id)
 
-        return flask.jsonify({'message': 'Club deleted successfully'})
+        return flask.jsonify({'message': 'Club deleted successfully', 'unrestricted': (not authorized and UNRESTRICTED_CLUB_DELETE)})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -497,6 +613,7 @@ def create_post():
             club = database.get_club_by_id(entry.get('club_id'))
             if club is not None:
                 entry['club_name'] = getattr(club, 'club_name', None)
+                entry['club_type'] = getattr(club, 'club_type', None)
         except Exception:
             pass
         try:
@@ -545,16 +662,57 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post"""
+    """Update a post.
+    Authorization: user must be an officer of the club that owns the post.
+    """
     try:
-        data = flask.request.get_json()
-        post = database.update_post(post_id, **data)
-        if post is None:
+        # Fetch existing post
+        existing = database.get_post_by_id(post_id)
+        if existing is None:
             return flask.jsonify({'error': 'Post not found'}), 404
+
+        # Determine club and auth context
+        club = database.get_club_by_id(existing.club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found for post'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        # Apply updates
+        data = flask.request.get_json() or {}
+        updated = database.update_post(post_id, **data)
+        if updated is None:
+            return flask.jsonify({'error': 'Failed to update'}), 500
+
+        entry = model_to_dict(updated)
+        # Enrich response similar to list endpoints
+        try:
+            club_obj = database.get_club_by_id(entry.get('club_id'))
+            if club_obj is not None:
+                entry['club_name'] = getattr(club_obj, 'club_name', None)
+                entry['club_type'] = getattr(club_obj, 'club_type', None)
+        except Exception:
+            pass
+        try:
+            officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+            if officer_obj is not None:
+                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+        except Exception:
+            pass
+        entry['timestamp'] = entry.get('post_time')
+
         return flask.jsonify({
             'message': 'Post updated successfully',
-            'entry': model_to_dict(post)
+            'entry': entry,
+            'editable': True  # Confirms caller had edit rights
         })
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

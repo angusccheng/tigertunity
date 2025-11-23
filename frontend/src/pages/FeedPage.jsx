@@ -6,8 +6,8 @@ import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
-// Post type options
-const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
+// Post type options (extended with Workshop, Other)
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -19,10 +19,17 @@ export default function FeedPage() {
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   // Filter states - all selected by default
-  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
+  const [activePostFilters, setActivePostFilters] = useState(new Set(POST_TYPES));
+  // Club type filters (defaults + dynamic). Initialize with standard types.
+  const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  // Sort state: 'post_date' or 'event_start'
+  const [sortMode, setSortMode] = useState('post_date');
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -233,10 +240,34 @@ export default function FeedPage() {
     });
   }
 
+  // Discover additional club types from post data and merge into active set.
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+    const discoveredTypes = new Set();
+    posts.forEach(p => { if (p.club_type) discoveredTypes.add(p.club_type); });
+    setActiveClubTypeFilters(prev => {
+      const merged = new Set(prev);
+      discoveredTypes.forEach(t => {
+        if (!merged.has(t)) merged.add(t); // auto-enable new type by default
+      });
+      return merged;
+    });
+  }, [posts]);
+
+  function toggleClubTypeFilter(type) {
+    setActiveClubTypeFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }
+
   // Filter posts based on active filters
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
     const matchesPostFilter = activePostFilters.has(post.post_type);
+    // Check club type filters (include post if missing club_type so we don't hide incomplete data)
+    const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
 
     // Check date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
@@ -249,8 +280,44 @@ export default function FeedPage() {
       }
     }
 
-    return matchesPostFilter;
+    // Check search query (case-insensitive, partial matching across all fields)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        post.post_title,
+        post.post_content,
+        post.club_name,
+        post.officer_name,
+        post.post_type,
+        post.club_type
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    return matchesPostFilter && matchesClubType;
   });
+
+  // Sort filtered posts based on selected sort mode
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (sortMode === 'event_start') {
+      // Sort by event_starttime (soonest/upcoming first); posts without starttime go to end
+      const aTime = a.event_starttime ? new Date(a.event_starttime).getTime() : Infinity;
+      const bTime = b.event_starttime ? new Date(b.event_starttime).getTime() : Infinity;
+      return aTime - bTime;
+    } else {
+      // Default: sort by post_time (newest first)
+      const aTime = a.post_time ? new Date(a.post_time).getTime() : 0;
+      const bTime = b.post_time ? new Date(b.post_time).getTime() : 0;
+      return bTime - aTime;
+    }
+  });
+
+  // Derived sorted list of unique club types for rendering (union of defaults + discovered)
+  const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
+  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
 
   return (
     <div className={styles.pageContainer}>
@@ -279,7 +346,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Event", "Application", "Food", "Speaker", "Social", "General Meeting"].map((t) => (
+                {POST_TYPES.map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -292,14 +359,19 @@ export default function FeedPage() {
               </div>
             </section>
 
-            {/* Club Filters */}
+            {/* Club Type Filters */}
             <section className={styles.filterSection}>
-              <div className={styles.filterLabel}>Club Filters</div>
+              <div className={styles.filterLabel}>Club Type Filters</div>
               <div className={styles.filterTags}>
-                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"].map((t) => (
-                  <span key={t} className={styles.clubFilterTag}>
-                    {t}
-                  </span>
+                {allClubTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleClubTypeFilter(type)}
+                    className={`${styles.clubFilterTag} ${activeClubTypeFilters.has(type) ? styles.filterActive : styles.filterInactive}`}
+                  >
+                    {type}
+                  </button>
                 ))}
               </div>
             </section>
@@ -345,27 +417,62 @@ export default function FeedPage() {
 
         {/* Feed */}
         <section className={styles.feedSection}>
+          <div className={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput}
+            />
+            <div className={styles.searchResultCount}>
+              {searchQuery.trim() && (
+                <span>
+                  {filteredPosts.length} {filteredPosts.length === 1 ? 'result' : 'results'} found
+                </span>
+              )}
+            </div>
+          </div>
           <div className={styles.feedHeader}>
             <span className={styles.dateBadge}>
               Today's date: {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' })}
             </span>
-            <button type="button" className={styles.sortButton}>
-              Sort by post date
-            </button>
+            <div className={styles.sortTabs}>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'post_date' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('post_date')}
+              >
+                Sort by post date
+              </button>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'event_start' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('event_start')}
+              >
+                Sort by event start
+              </button>
+            </div>
           </div>
 
-          {filteredPosts.map((p) => (
-            <PostCard
-              key={p.post_id}
-              post={p}
-              onClick={() => setSelected(p)}
-              onSaveToggle={(e) => savedPosts.has(p.post_id)
-                ? handleUnsavePost(p.post_id, e)
-                : handleSavePost(p.post_id, e)}
-              isSaved={savedPosts.has(p.post_id)}
-              showSaveButton={!!user}
-            />
-          ))}
+          {filteredPosts.length === 0 && searchQuery.trim() ? (
+            <div className={styles.noResults}>
+              No posts match your search for "{searchQuery}"
+            </div>
+          ) : (
+            sortedPosts.map((p) => (
+              <PostCard
+                key={p.post_id}
+                post={p}
+                onClick={() => setSelected(p)}
+                onSaveToggle={(e) => savedPosts.has(p.post_id)
+                  ? handleUnsavePost(p.post_id, e)
+                  : handleSavePost(p.post_id, e)}
+                isSaved={savedPosts.has(p.post_id)}
+                showSaveButton={!!user}
+              />
+            ))
+          )}
         </section>
       </main>
 
@@ -690,20 +797,32 @@ export default function FeedPage() {
                   <p className={styles.readModalTypeValue}>{selected.post_type}</p>
                 </div>
                 <div className={styles.readModalActions}>
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick(selected)}
-                    className={styles.editButton}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selected)}
-                    className={styles.deleteButton}
-                  >
-                    Delete
-                  </button>
+                  {(() => {
+                    const officerClubNames = new Set(myClubs.map(c => (c.club_name || '').toLowerCase()));
+                    const canModify = selected.club_name && officerClubNames.has(selected.club_name.toLowerCase());
+                    return (
+                      <>
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(selected)}
+                            className={styles.editButton}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selected)}
+                            className={styles.deleteButton}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </aside>
             </div>

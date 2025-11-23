@@ -2,6 +2,11 @@ import React from "react";
 import styles from "./PostCard.module.css";
 
 export default function PostCard({ post, onClick, onSaveToggle, isSaved, showSaveButton = false }) {
+    // Format officer display: "DisplayName (netid)" or just "netid" if no display name
+    const officerDisplay = post.officer_display_name 
+        ? `${post.officer_display_name} (${post.officer_name})`
+        : post.officer_name;
+
     return (
         <div className={styles.postCard}>
             <button
@@ -13,7 +18,7 @@ export default function PostCard({ post, onClick, onSaveToggle, isSaved, showSav
                     <h3 className={styles.postTitle}>{post.post_title}</h3>
                     <div className={styles.postMeta}>
                         <span><strong>Club:</strong> {post.club_name}</span>
-                        <span><strong>Officer:</strong> {post.officer_name}</span>
+                        <span><strong>Officer:</strong> {officerDisplay}</span>
                         {post.post_time && <span><strong>Posted:</strong>{new Date(post.post_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
                         {post.post_type && <span className={styles.postType}>{post.post_type}</span>}
                     </div>

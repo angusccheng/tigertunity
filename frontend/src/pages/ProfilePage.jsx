@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
-import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad } from "../features/postApi.js";
+import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
@@ -14,6 +14,8 @@ export default function ProfilePage() {
   const [notepad, setNotepad] = useState("Click to add notes...");
   const [isEditingNotepad, setIsEditingNotepad] = useState(false);
   const [notepadLoading, setNotepadLoading] = useState(true);
+  const [displayName, setDisplayName] = useState("");
+  const [displayNameLoading, setDisplayNameLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -51,6 +53,24 @@ export default function ProfilePage() {
     loadNotepad();
   }, [user]);
 
+  useEffect(() => {
+    async function loadDisplayName() {
+      if (!user) {
+        setDisplayNameLoading(false);
+        return;
+      }
+      try {
+        const response = await fetchDisplayName(user);
+        setDisplayName(response.display_name || "");
+      } catch (err) {
+        console.error("Failed to load display name:", err);
+      } finally {
+        setDisplayNameLoading(false);
+      }
+    }
+    loadDisplayName();
+  }, [user]);
+
   async function handleUnsavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
     if (!user) return;
@@ -71,6 +91,16 @@ export default function ProfilePage() {
     } catch (err) {
       console.error("Failed to save notepad:", err);
       alert("Failed to save notepad. Please try again.");
+    }
+  }
+
+  async function handleSaveDisplayName() {
+    if (!user) return;
+    try {
+      await updateDisplayName(user, displayName);
+    } catch (err) {
+      console.error("Failed to save display name:", err);
+      alert("Failed to save display name. Please try again.");
     }
   }
 
@@ -108,6 +138,10 @@ export default function ProfilePage() {
                       type="text"
                       placeholder="Enter your name"
                       className={styles.profileInput}
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      onBlur={handleSaveDisplayName}
+                      disabled={displayNameLoading}
                     />
                   </div>
                   <div className={styles.profileField}>
@@ -194,7 +228,11 @@ export default function ProfilePage() {
                     <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
                   </p>
                   <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
+                      selected.officer_display_name 
+                        ? `${selected.officer_display_name} (${selected.officer_name})`
+                        : selected.officer_name
+                    }</span>
                   </p>
                 </div>
                 <p className={styles.readModalDate}>

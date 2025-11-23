@@ -192,10 +192,13 @@ def list_posts():
             club_obj = database.get_club_by_id(club_id)
             club_name = club_obj.club_name if club_obj else None
             club_type = getattr(club_obj, 'club_type', None) if club_obj else None
-            officer_name = database.get_officer_by_id(officer_id).officer_name
+            officer_obj = database.get_officer_by_id(officer_id)
+            officer_name = officer_obj.officer_name if officer_obj else None
+            officer_display_name = getattr(officer_obj, 'display_name', None) if officer_obj else None
             posts_dict[i]['club_name'] = club_name
             posts_dict[i]['club_type'] = club_type
             posts_dict[i]['officer_name'] = officer_name
+            posts_dict[i]['officer_display_name'] = officer_display_name
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
@@ -215,6 +218,7 @@ def list_posts_by_club(club_id):
             posts_dict[i]['club_name'] = getattr(club, 'club_name', None) if club else None
             posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
             posts_dict[i]['officer_name'] = getattr(officer, 'officer_name', None) if officer else None
+            posts_dict[i]['officer_display_name'] = getattr(officer, 'display_name', None) if officer else None
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
@@ -508,6 +512,7 @@ def create_post():
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
 
@@ -540,6 +545,7 @@ def get_post(post_id):
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
         entry['timestamp'] = entry.get('post_time')
@@ -593,6 +599,7 @@ def update_post(post_id):
             officer_obj = database.get_officer_by_id(entry.get('officer_id'))
             if officer_obj is not None:
                 entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
         except Exception:
             pass
         entry['timestamp'] = entry.get('post_time')
@@ -810,6 +817,51 @@ def update_officer_notepad(officer_name):
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/api/officers/<string:officer_name>/display-name', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_display_name(officer_name):
+    """Get display_name for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'display_name': ''})
+
+        return flask.jsonify({'display_name': officer.display_name or ''})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/display-name', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_display_name(officer_name):
+    """Update display_name for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        display_name = data.get('display_name', '')
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            # Create officer if doesn't exist
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, display_name=display_name)
+        return flask.jsonify({'message': 'Display name updated successfully', 'display_name': display_name})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 @app.route('/api/officers/<string:officer_name>/saved-posts', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_saved_posts_for_officer(officer_name):
@@ -841,6 +893,7 @@ def get_saved_posts_for_officer(officer_name):
                 officer_obj = database.get_officer_by_id(entry.get('officer_id'))
                 if officer_obj is not None:
                     entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+                    entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
             except Exception:
                 pass
             entry['timestamp'] = entry.get('post_time')

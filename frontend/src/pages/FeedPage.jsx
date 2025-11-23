@@ -827,7 +827,11 @@ export default function FeedPage() {
                     <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
                   </p>
                   <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
+                      selected.officer_display_name 
+                        ? `${selected.officer_display_name} (${selected.officer_name})`
+                        : selected.officer_name
+                    }</span>
                   </p>
                 </div>
                 <p className={styles.readModalDate}>

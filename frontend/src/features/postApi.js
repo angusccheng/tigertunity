@@ -196,6 +196,37 @@ export async function updateNotepad(officerName, notepad) {
   }
 }
 
+export async function fetchDisplayName(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/display-name`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch display name:", err);
+    return { display_name: '' };
+  }
+}
+
+export async function updateDisplayName(officerName, displayName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/display-name`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ display_name: displayName }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update display name:", err);
+    throw err;
+  }
+}
+
 export async function updatePost(postId, updatedData) {
   try {
     const r = await fetch(`${API_BASE}/api/posts/${postId}`, {

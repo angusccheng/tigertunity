@@ -169,6 +169,42 @@
   box-shadow: 0 0 0 2px rgba(255, 144, 0, 0.1);
 }
 
+/* Post Limit Control */
+.postLimitControl {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.postLimitLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #404040;
+  font-weight: normal;
+}
+
+.postLimitInput {
+  width: 3.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.postLimitInput:focus {
+  outline: none;
+  border-color: #ff9000;
+  box-shadow: 0 0 0 2px rgba(255, 144, 0, 0.1);
+}
+
 /* Feed Section */
 .feedSection {
   grid-column: span 12 / span 12;

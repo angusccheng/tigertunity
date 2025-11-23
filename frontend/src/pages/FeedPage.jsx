@@ -26,6 +26,10 @@ export default function FeedPage() {
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+    // Event start date filter
+    const [eventDateFilterEnabled, setEventDateFilterEnabled] = useState(false);
+    const [eventStartDate, setEventStartDate] = useState("");
+    const [eventEndDate, setEventEndDate] = useState("");
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   // Sort state: 'post_date' or 'event_start'
@@ -269,7 +273,7 @@ export default function FeedPage() {
     // Check club type filters (include post if missing club_type so we don't hide incomplete data)
     const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
 
-    // Check date range if enabled
+    // Check post date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
       const postDate = new Date(post.post_time);
       // Normalize post date to local midnight for comparison
@@ -284,6 +288,26 @@ export default function FeedPage() {
         const endDateTime = new Date(endDate + 'T23:59:59'); // Parse as local time
         const endDateOnly = new Date(endDateTime.getFullYear(), endDateTime.getMonth(), endDateTime.getDate());
         if (postDateOnly > endDateOnly) return false;
+      }
+    }
+
+    // Check event start date range if enabled
+    if (eventDateFilterEnabled && (eventStartDate || eventEndDate)) {
+      if (!post.event_starttime) return false; // Exclude posts without event start time
+      
+      const eventDate = new Date(post.event_starttime);
+      // Normalize event date to local midnight for comparison
+      const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+      
+      if (eventStartDate) {
+        const filterStartDateTime = new Date(eventStartDate + 'T00:00:00');
+        const filterStartDateOnly = new Date(filterStartDateTime.getFullYear(), filterStartDateTime.getMonth(), filterStartDateTime.getDate());
+        if (eventDateOnly < filterStartDateOnly) return false;
+      }
+      if (eventEndDate) {
+        const filterEndDateTime = new Date(eventEndDate + 'T23:59:59');
+        const filterEndDateOnly = new Date(filterEndDateTime.getFullYear(), filterEndDateTime.getMonth(), filterEndDateTime.getDate());
+        if (eventDateOnly > filterEndDateOnly) return false;
       }
     }
 
@@ -383,7 +407,7 @@ export default function FeedPage() {
               </div>
             </section>
 
-            {/* Date Range Filter */}
+            {/* Filter by Post Date */}
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>
                 <label className={styles.dateFilterToggle}>
@@ -393,7 +417,7 @@ export default function FeedPage() {
                     onChange={(e) => setDateFilterEnabled(e.target.checked)}
                     className={styles.dateCheckbox}
                   />
-                  Date Range Filter
+                    Post Date Range Filter
                 </label>
               </div>
               {dateFilterEnabled && (
@@ -419,6 +443,43 @@ export default function FeedPage() {
                 </div>
               )}
             </section>
+
+              {/* Event Start Date Range Filter */}
+              <section className={styles.filterSection}>
+                <div className={styles.filterLabel}>
+                  <label className={styles.dateFilterToggle}>
+                    <input
+                      type="checkbox"
+                      checked={eventDateFilterEnabled}
+                      onChange={(e) => setEventDateFilterEnabled(e.target.checked)}
+                      className={styles.dateCheckbox}
+                    />
+                    Event Start Date Filter
+                  </label>
+                </div>
+                {eventDateFilterEnabled && (
+                  <div className={styles.dateInputs}>
+                    <div className={styles.dateField}>
+                      <label className={styles.dateLabel}>From:</label>
+                      <input
+                        type="date"
+                        value={eventStartDate}
+                        onChange={(e) => setEventStartDate(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                    </div>
+                    <div className={styles.dateField}>
+                      <label className={styles.dateLabel}>To:</label>
+                      <input
+                        type="date"
+                        value={eventEndDate}
+                        onChange={(e) => setEventEndDate(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                    </div>
+                  </div>
+                )}
+              </section>
           </div>
         </aside>
 

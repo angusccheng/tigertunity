@@ -34,6 +34,8 @@ export default function FeedPage() {
   const [searchQuery, setSearchQuery] = useState("");
   // Sort state: 'post_date' or 'event_start'
   const [sortMode, setSortMode] = useState('post_date');
+  // Post limit state
+  const [postLimit, setPostLimit] = useState(50);
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -146,7 +148,7 @@ export default function FeedPage() {
       const response = await createPost(payload);
       const created = response.entry;
       console.log(created);
-      setPosts((prev) => [created, ...prev].slice(0, 20));
+      setPosts((prev) => [created, ...prev]);
       setForm({
         post_title: "",
         club_name: "",
@@ -350,6 +352,9 @@ export default function FeedPage() {
   const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
   const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
 
+  // Apply post limit to displayed posts
+  const displayedPosts = sortedPosts.slice(0, postLimit);
+
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -478,12 +483,29 @@ export default function FeedPage() {
                       />
                     </div>
                   </div>
-                )}
-              </section>
-          </div>
-        </aside>
+              )}
+            </section>
 
-        {/* Feed */}
+            {/* Post Limit Control */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>Display Limit</div>
+              <div className={styles.postLimitControl}>
+                <label className={styles.postLimitLabel}>
+                  Show last
+                  <input
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={postLimit}
+                    onChange={(e) => setPostLimit(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                    className={styles.postLimitInput}
+                  />
+                  posts
+                </label>
+              </div>
+            </section>
+          </div>
+        </aside>        {/* Feed */}
         <section className={styles.feedSection}>
           <div className={styles.searchContainer}>
             <input
@@ -528,7 +550,7 @@ export default function FeedPage() {
               No posts match your search for "{searchQuery}"
             </div>
           ) : (
-            sortedPosts.map((p) => (
+            displayedPosts.map((p) => (
               <PostCard
                 key={p.post_id}
                 post={p}

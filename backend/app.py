@@ -111,7 +111,7 @@ def login():
 @app.route('/logoutapp', methods=['GET'])
 def logoutapp():
     # Serve a simple logout confirmation page instead of redirecting
-    response = flask.redirect(FRONTEND_URL + '/login')
+    response = flask.redirect(FRONTEND_URL + '/logout')
     return response
 
 #-----------------------------------------------------------------------

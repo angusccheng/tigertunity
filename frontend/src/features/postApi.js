@@ -165,6 +165,98 @@ export async function fetchSavedPosts(officerName) {
   }
 }
 
+export async function fetchNotepad(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/notepad`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch notepad:", err);
+    return { notepad: '' };
+  }
+}
+
+export async function updateNotepad(officerName, notepad) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/notepad`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ notepad }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update notepad:", err);
+    throw err;
+  }
+}
+
+export async function fetchPreferences(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/preferences`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch preferences:", err);
+    return { preferences: [] };
+  }
+}
+
+export async function updatePreferences(officerName, preferences) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/preferences`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ preferences }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update preferences:", err);
+    throw err;
+  }
+}
+export async function fetchDisplayName(officerName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/display-name`, {
+      headers: {
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to fetch display name:", err);
+    return { display_name: '' };
+  }
+}
+
+export async function updateDisplayName(officerName, displayName) {
+  try {
+    const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/display-name`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${getAccess()}`,
+      },
+      body: JSON.stringify({ display_name: displayName }),
+    });
+    return await handleResponse(r);
+  } catch (err) {
+    console.error("Failed to update display name:", err);
+    throw err;
+  }
+}
+
 export async function updatePost(postId, updatedData) {
   try {
     const r = await fetch(`${API_BASE}/api/posts/${postId}`, {

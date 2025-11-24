@@ -4,7 +4,8 @@ export function saveTokens({ username, access, refresh }) {
   sessionStorage.setItem("tt_refresh", refresh);
 }
 export function clearTokens() {
-  ["tt_user","tt_access","tt_refresh"].forEach(k => sessionStorage.removeItem(k));
+  console.log("this is clearing tokens");
+  ["tt_user", "tt_access", "tt_refresh"].forEach(k => sessionStorage.removeItem(k));
 }
 export function getUser() { return sessionStorage.getItem("tt_user"); }
 export function getAccess() { return sessionStorage.getItem("tt_access"); }
@@ -17,22 +18,22 @@ export async function exchangeNonceIfPresent() {
     console.log('No nonce in URL');
     return false;
   }
-  
+
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   const tokenUrl = `${backendUrl}/api/gettokens?nonce=${encodeURIComponent(nonce)}`;
   console.log('Exchanging nonce at:', tokenUrl);
-  
+
   try {
     const r = await fetch(tokenUrl);
     console.log('Response status:', r.status, r.statusText);
-    
+
     if (!r.ok) {
       const text = await r.text();
       console.error("Nonce exchange failed:", r.status, text);
       alert(`Login failed: ${r.status} ${r.statusText}. Check console for details.`);
       return false;
     }
-    
+
     const tokens = await r.json();
     console.log('Received tokens:', tokens);
 
@@ -66,21 +67,21 @@ export async function refreshAccessIfNeeded() {
   // simple timed refresh every 25 minutes
   const refresh = getRefresh();
   if (!refresh) return;
-  
+
   try {
     const r = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/refreshaccesstoken`, {
       method: "POST",
-      headers: { 
+      headers: {
         Authorization: `Bearer ${refresh}`,
         Accept: "application/json",
         "Content-Type": "application/json"
       }
     });
-    
+
     if (r.status !== 200) {
       return;
     }
-    
+
     const accesstoken = await r.json();
     // Backend returns the access token directly as a string
     if (accesstoken) {

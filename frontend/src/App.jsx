@@ -18,6 +18,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/logout" element={<LogoutPage />} />
       <Route
         path="/"
         element={
@@ -42,7 +43,6 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/logout" element={<LogoutPage />} />
     </Routes>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.jsx";
 import { getUser } from "../auth.js";
-import { fetchSavedPosts, unsavePost } from "../features/postApi.js";
+import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
@@ -11,8 +11,14 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
-  const [bio, setBio] = useState("Click to add a bio...");
-  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [notepad, setNotepad] = useState("Click to add notes...");
+  const [isEditingNotepad, setIsEditingNotepad] = useState(false);
+  const [notepadLoading, setNotepadLoading] = useState(true);
+  const [displayName, setDisplayName] = useState("");
+  const [displayNameLoading, setDisplayNameLoading] = useState(true);
+  const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
+  const [preferences, setPreferences] = useState(new Set());
+  const [prefsLoading, setPrefsLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -32,6 +38,61 @@ export default function ProfilePage() {
     loadSavedPosts();
   }, [user]);
 
+  useEffect(() => {
+    async function loadNotepad() {
+      if (!user) {
+        setNotepadLoading(false);
+        return;
+      }
+      try {
+        const response = await fetchNotepad(user);
+        setNotepad(response.notepad || "Click to add notes...");
+      } catch (err) {
+        console.error("Failed to load notepad:", err);
+      } finally {
+        setNotepadLoading(false);
+      }
+    }
+    loadNotepad();
+  }, [user]);
+
+  useEffect(() => {
+    async function loadDisplayName() {
+      if (!user) {
+        setDisplayNameLoading(false);
+        return;
+      }
+      try {
+        const response = await fetchDisplayName(user);
+        setDisplayName(response.display_name || "");
+      } catch (err) {
+        console.error("Failed to load display name:", err);
+      } finally {
+        setDisplayNameLoading(false);
+      }
+    }
+    loadDisplayName();
+  }, [user]);
+
+  useEffect(() => {
+    async function loadPreferences() {
+      if (!user) {
+        setPrefsLoading(false);
+        return;
+      }
+      try {
+        const resp = await fetchPreferences(user);
+        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
+        setPreferences(new Set(arr));
+      } catch (err) {
+        console.error("Failed to load preferences:", err);
+      } finally {
+        setPrefsLoading(false);
+      }
+    }
+    loadPreferences();
+  }, [user]);
+
   async function handleUnsavePost(postId, e) {
     e.stopPropagation(); // Prevent opening the post modal
     if (!user) return;
@@ -42,6 +103,38 @@ export default function ProfilePage() {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async function handleSaveNotepad() {
+    if (!user) return;
+    try {
+      await updateNotepad(user, notepad);
+      setIsEditingNotepad(false);
+    } catch (err) {
+      console.error("Failed to save notepad:", err);
+      alert("Failed to save notepad. Please try again.");
+    }
+  }
+
+  async function handleSaveDisplayName() {
+    if (!user) return;
+    try {
+      await updateDisplayName(user, displayName);
+    } catch (err) {
+      console.error("Failed to save display name:", err);
+      alert("Failed to save display name. Please try again.");
+    }
+  }
+
+  async function togglePreference(type) {
+    if (!user) return;
+    setPreferences(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      // Fire-and-forget save
+      updatePreferences(user, Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
+      return next;
+    });
   }
 
   // Placeholder data - replace with actual API calls later
@@ -66,38 +159,71 @@ export default function ProfilePage() {
             {/* User Profile Section */}
             <div className={styles.profileCard}>
               <div className={styles.profileHeader}>
-                {/* Profile Picture Placeholder */}
-                <div className={styles.profileAvatar} />
-
                 {/* User Info */}
                 <div className={styles.profileInfo}>
-                  <h2 className={styles.profileName}>
-                    {user || "Username"}
-                  </h2>
-                  <p className={styles.profileClass}>Class of 2027</p>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>NetID:</label>
+                    <span className={styles.profileValue}>{user || "Username"}</span>
+                  </div>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>Name:</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your name"
+                      className={styles.profileInput}
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      onBlur={handleSaveDisplayName}
+                      disabled={displayNameLoading}
+                    />
+                  </div>
+                  <div className={styles.profileField}>
+                    <label className={styles.profileLabel}>Class:</label>
+                    <span className={styles.profileValue}>Class of 2027</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Bio Section */}
+              {/* Notepad Section */}
               <div className={styles.bioSection}>
-                <h3 className={styles.bioTitle}>Bio</h3>
-                {isEditingBio ? (
+                <h3 className={styles.bioTitle}>Notepad</h3>
+                {notepadLoading ? (
+                  <div className={styles.bioDisplay}>Loading...</div>
+                ) : isEditingNotepad ? (
                   <textarea
                     className={styles.bioTextarea}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    onBlur={() => setIsEditingBio(false)}
+                    value={notepad}
+                    onChange={(e) => setNotepad(e.target.value)}
+                    onBlur={handleSaveNotepad}
                     autoFocus
                     rows={4}
                   />
                 ) : (
                   <div
                     className={styles.bioDisplay}
-                    onClick={() => setIsEditingBio(true)}
+                    onClick={() => setIsEditingNotepad(true)}
                   >
-                    {bio}
+                    {notepad}
                   </div>
                 )}
+              </div>
+
+              {/* Preferences Section */}
+              <div className={styles.bioSection}>
+                <h3 className={styles.bioTitle}>My Preferences</h3>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+                  {POST_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => togglePreference(t)}
+                      disabled={prefsLoading}
+                      className={preferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -153,7 +279,11 @@ export default function ProfilePage() {
                     <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
                   </p>
                   <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
+                      selected.officer_display_name 
+                        ? `${selected.officer_display_name} (${selected.officer_name})`
+                        : selected.officer_name
+                    }</span>
                   </p>
                 </div>
                 <p className={styles.readModalDate}>

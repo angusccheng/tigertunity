@@ -95,6 +95,27 @@
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   color: #404040;
+  cursor: pointer;
+  background: none;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
+}
+
+.clubFilterTag.filterActive {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.clubFilterTag.filterInactive {
+  background: #fafafa;
+  color: #a3a3a3;
+  border-color: #e5e5e5;
+  opacity: 0.6;
+}
+
+.clubFilterTag:hover {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 /* Date Filter */
@@ -148,6 +169,42 @@
   box-shadow: 0 0 0 2px rgba(255, 144, 0, 0.1);
 }
 
+/* Post Limit Control */
+.postLimitControl {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.postLimitLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #404040;
+  font-weight: normal;
+}
+
+.postLimitInput {
+  width: 3.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.postLimitInput:focus {
+  outline: none;
+  border-color: #ff9000;
+  box-shadow: 0 0 0 2px rgba(255, 144, 0, 0.1);
+}
+
 /* Feed Section */
 .feedSection {
   grid-column: span 12 / span 12;
@@ -162,10 +219,56 @@
   }
 }
 
+/* Search */
+.searchContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0rem;
+  margin-bottom: 0rem;
+}
+
+.searchInput {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d4;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #ff9000;
+  box-shadow: 0 0 0 3px rgba(255, 144, 0, 0.1);
+}
+
+.searchInput::placeholder {
+  color: #a3a3a3;
+}
+
+.searchResultCount {
+  min-height: 1.25rem;
+  font-size: 0.75rem;
+  color: #737373;
+  padding-left: 0.25rem;
+}
+
+.noResults {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #737373;
+  font-size: 0.875rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e5e5;
+}
+
 .feedHeader {
   margin-bottom: 0.75rem;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   font-size: 0.75rem;
   color: #737373;
@@ -175,8 +278,36 @@
   border-radius: 0.375rem;
   border: 1px solid #e5e5e5;
   background: white;
-  padding: 0.25rem 0.5rem;
+  padding: 0.5rem 0.75rem;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  font-size: 0.875rem;
+}
+
+.sortTabs {
+  display: flex;
+  gap: 0.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.sortTab {
+  appearance: none;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sortTabActive {
+  color: #111827;
+  background: #fff7ed;
+  border: 1px solid rgba(253, 186, 116, 0.6);
 }
 
 .sortButton {
@@ -423,6 +554,15 @@
 .formInput:focus {
   outline: 2px solid #ff9000;
   outline-offset: 2px;
+}
+
+/* Style empty datetime-local inputs to appear grayed out */
+.formInput[type="datetime-local"]:invalid {
+  color: #a3a3a3;
+}
+
+.formInput[type="datetime-local"]:focus:invalid {
+  color: #404040;
 }
 
 .formInputError {

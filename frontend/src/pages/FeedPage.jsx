@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost } from "../features/postApi.js";
+import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost, fetchPreferences } from "../features/postApi.js";
 import { fetchMyOfficerClubs } from "../features/clubsApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
 
-// Post type options
-const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting"];
+// Post type options (extended with Workshop, Other)
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -19,10 +19,29 @@ export default function FeedPage() {
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   // Filter states - all selected by default
-  const [activePostFilters, setActivePostFilters] = useState(new Set(["Event", "Application", "Food", "Speaker", "Social", "General Meeting"]));
+  const [activePostFilters, setActivePostFilters] = useState(new Set(POST_TYPES));
+  // Club type filters (defaults + dynamic). Initialize with standard types.
+  const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+    // Event start date filter
+    const [eventDateFilterEnabled, setEventDateFilterEnabled] = useState(false);
+    const [eventStartDate, setEventStartDate] = useState("");
+    const [eventEndDate, setEventEndDate] = useState("");
+  // Hide past events filter
+  const [hidePastEvents, setHidePastEvents] = useState(false);
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  // Sort state: 'post_date' or 'event_start'
+  const [sortMode, setSortMode] = useState('post_date');
+  // Post limit state
+  const [postLimit, setPostLimit] = useState(50);
+  // My Preferences
+  const [preferences, setPreferences] = useState(new Set());
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
   // Edit state
   const [editingPost, setEditingPost] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -86,6 +105,24 @@ export default function FeedPage() {
     })();
   }, [user]);
 
+  // Load user preferences
+  useEffect(() => {
+    (async () => {
+      setPrefsLoaded(false);
+      setPreferences(new Set());
+      if (!user) { setPrefsLoaded(true); return; }
+      try {
+        const resp = await fetchPreferences(user);
+        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
+        setPreferences(new Set(arr));
+      } catch (e) {
+        // ignore
+      } finally {
+        setPrefsLoaded(true);
+      }
+    })();
+  }, [user]);
+
   // Lock scroll when any modal is open
   useEffect(() => {
     if (selected || composerOpen) document.body.classList.add("overflow-hidden");
@@ -135,7 +172,7 @@ export default function FeedPage() {
       const response = await createPost(payload);
       const created = response.entry;
       console.log(created);
-      setPosts((prev) => [created, ...prev].slice(0, 20));
+      setPosts((prev) => [created, ...prev]);
       setForm({
         post_title: "",
         club_name: "",
@@ -233,24 +270,132 @@ export default function FeedPage() {
     });
   }
 
+  // Discover additional club types from post data and merge into active set.
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+    const discoveredTypes = new Set();
+    posts.forEach(p => { if (p.club_type) discoveredTypes.add(p.club_type); });
+    setActiveClubTypeFilters(prev => {
+      const merged = new Set(prev);
+      discoveredTypes.forEach(t => {
+        if (!merged.has(t)) merged.add(t); // auto-enable new type by default
+      });
+      return merged;
+    });
+  }, [posts]);
+
+  function toggleClubTypeFilter(type) {
+    setActiveClubTypeFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }
+
+  // Compute effective post filters (apply My Preferences intersection if enabled)
+  const effectivePostFilters = (() => {
+    if (myPrefsEnabled) {
+      if (preferences.size === 0) return new Set();
+      const inter = new Set();
+      activePostFilters.forEach((t) => { if (preferences.has(t)) inter.add(t); });
+      return inter;
+    }
+    return activePostFilters;
+  })();
+
   // Filter posts based on active filters
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
-    const matchesPostFilter = activePostFilters.has(post.post_type);
+    const matchesPostFilter = effectivePostFilters.has(post.post_type);
+    // Check club type filters (include post if missing club_type so we don't hide incomplete data)
+    const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
 
-    // Check date range if enabled
+    // Check post date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
       const postDate = new Date(post.post_time);
-      if (startDate && new Date(startDate) > postDate) return false;
+      // Normalize post date to local midnight for comparison
+      const postDateOnly = new Date(postDate.getFullYear(), postDate.getMonth(), postDate.getDate());
+      
+      if (startDate) {
+        const startDateTime = new Date(startDate + 'T00:00:00'); // Parse as local time
+        const startDateOnly = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
+        if (postDateOnly < startDateOnly) return false;
+      }
       if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999); // Include the entire end date
-        if (endDateTime < postDate) return false;
+        const endDateTime = new Date(endDate + 'T23:59:59'); // Parse as local time
+        const endDateOnly = new Date(endDateTime.getFullYear(), endDateTime.getMonth(), endDateTime.getDate());
+        if (postDateOnly > endDateOnly) return false;
       }
     }
 
-    return matchesPostFilter;
+    // Check event start date range if enabled
+    if (eventDateFilterEnabled && (eventStartDate || eventEndDate)) {
+      if (!post.event_starttime) return false; // Exclude posts without event start time
+      
+      const eventDate = new Date(post.event_starttime);
+      // Normalize event date to local midnight for comparison
+      const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+      
+      if (eventStartDate) {
+        const filterStartDateTime = new Date(eventStartDate + 'T00:00:00');
+        const filterStartDateOnly = new Date(filterStartDateTime.getFullYear(), filterStartDateTime.getMonth(), filterStartDateTime.getDate());
+        if (eventDateOnly < filterStartDateOnly) return false;
+      }
+      if (eventEndDate) {
+        const filterEndDateTime = new Date(eventEndDate + 'T23:59:59');
+        const filterEndDateOnly = new Date(filterEndDateTime.getFullYear(), filterEndDateTime.getMonth(), filterEndDateTime.getDate());
+        if (eventDateOnly > filterEndDateOnly) return false;
+      }
+    }
+
+    // Check hide past events filter
+    if (hidePastEvents && post.event_endtime) {
+      const now = new Date();
+      const endTime = new Date(post.event_endtime);
+      if (endTime < now) return false; // Hide if event has ended
+    }
+
+    // Check search query (case-insensitive, partial matching across all fields)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        post.post_title,
+        post.post_content,
+        post.club_name,
+        post.officer_name,
+        post.post_type,
+        post.club_type
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    return matchesPostFilter && matchesClubType;
   });
+
+  // Sort filtered posts based on selected sort mode
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (sortMode === 'event_start') {
+      // Sort by event_starttime (soonest/upcoming first); posts without starttime go to end
+      const aTime = a.event_starttime ? new Date(a.event_starttime).getTime() : Infinity;
+      const bTime = b.event_starttime ? new Date(b.event_starttime).getTime() : Infinity;
+      return aTime - bTime;
+    } else {
+      // Default: sort by post_time (newest first)
+      const aTime = a.post_time ? new Date(a.post_time).getTime() : 0;
+      const bTime = b.post_time ? new Date(b.post_time).getTime() : 0;
+      return bTime - aTime;
+    }
+  });
+
+  // Derived sorted list of unique club types for rendering (union of defaults + discovered)
+  const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
+  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
+
+  // Apply post limit to displayed posts
+  const displayedPosts = sortedPosts.slice(0, postLimit);
 
   return (
     <div className={styles.pageContainer}>
@@ -279,7 +424,7 @@ export default function FeedPage() {
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
               <div className={styles.filterTags}>
-                {["Event", "Application", "Food", "Speaker", "Social", "General Meeting"].map((t) => (
+                {POST_TYPES.map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -290,21 +435,52 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={myPrefsEnabled}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      if (!user || preferences.size === 0) return; // ignore if not available
+                      setMyPrefsEnabled(next);
+                    }}
+                    disabled={!user || preferences.size === 0}
+                    className={styles.dateCheckbox}
+                  />
+                  Apply My Preferences
+                </label>
+              </div>
+              {!user && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  Log in to use My Preferences.
+                </div>
+              )}
+              {user && prefsLoaded && preferences.size === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No preferences set yet — configure them on your Profile.
+                </div>
+              )}
             </section>
 
-            {/* Club Filters */}
+            {/* Club Type Filters */}
             <section className={styles.filterSection}>
-              <div className={styles.filterLabel}>Club Filters</div>
+              <div className={styles.filterLabel}>Club Type Filters</div>
               <div className={styles.filterTags}>
-                {["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"].map((t) => (
-                  <span key={t} className={styles.clubFilterTag}>
-                    {t}
-                  </span>
+                {allClubTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleClubTypeFilter(type)}
+                    className={`${styles.clubFilterTag} ${activeClubTypeFilters.has(type) ? styles.filterActive : styles.filterInactive}`}
+                  >
+                    {type}
+                  </button>
                 ))}
               </div>
             </section>
 
-            {/* Date Range Filter */}
+            {/* Filter by Post Date */}
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>
                 <label className={styles.dateFilterToggle}>
@@ -314,7 +490,7 @@ export default function FeedPage() {
                     onChange={(e) => setDateFilterEnabled(e.target.checked)}
                     className={styles.dateCheckbox}
                   />
-                  Date Range Filter
+                    Post Date Range Filter
                 </label>
               </div>
               {dateFilterEnabled && (
@@ -340,32 +516,131 @@ export default function FeedPage() {
                 </div>
               )}
             </section>
-          </div>
-        </aside>
 
-        {/* Feed */}
+              {/* Event Start Date Range Filter */}
+              <section className={styles.filterSection}>
+                <div className={styles.filterLabel}>
+                  <label className={styles.dateFilterToggle}>
+                    <input
+                      type="checkbox"
+                      checked={eventDateFilterEnabled}
+                      onChange={(e) => setEventDateFilterEnabled(e.target.checked)}
+                      className={styles.dateCheckbox}
+                    />
+                    Event Start Date Filter
+                  </label>
+                </div>
+                {eventDateFilterEnabled && (
+                  <div className={styles.dateInputs}>
+                    <div className={styles.dateField}>
+                      <label className={styles.dateLabel}>From:</label>
+                      <input
+                        type="date"
+                        value={eventStartDate}
+                        onChange={(e) => setEventStartDate(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                    </div>
+                    <div className={styles.dateField}>
+                      <label className={styles.dateLabel}>To:</label>
+                      <input
+                        type="date"
+                        value={eventEndDate}
+                        onChange={(e) => setEventEndDate(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                    </div>
+                  </div>
+              )}
+            </section>
+
+            {/* Hide Past Events Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={hidePastEvents}
+                    onChange={(e) => setHidePastEvents(e.target.checked)}
+                    className={styles.dateCheckbox}
+                  />
+                  Hide Past Events
+                </label>
+              </div>
+            </section>
+          </div>
+        </aside>        {/* Feed */}
         <section className={styles.feedSection}>
+          <div className={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput}
+            />
+            <div className={styles.searchResultCount}>
+              {searchQuery.trim() && (
+                <span>
+                  {filteredPosts.length} {filteredPosts.length === 1 ? 'result' : 'results'} found
+                </span>
+              )}
+            </div>
+          </div>
           <div className={styles.feedHeader}>
             <span className={styles.dateBadge}>
               Today's date: {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' })}
             </span>
-            <button type="button" className={styles.sortButton}>
-              Sort by post date
-            </button>
+            <div className={styles.sortTabs}>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'post_date' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('post_date')}
+              >
+                Sort by post date
+              </button>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'event_start' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('event_start')}
+              >
+                Sort by event start
+              </button>
+            </div>
+            <div className={styles.postLimitControl}>
+              <label className={styles.postLimitLabel}>
+                Show last
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={postLimit}
+                  onChange={(e) => setPostLimit(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                  className={styles.postLimitInput}
+                />
+                posts
+              </label>
+            </div>
           </div>
 
-          {filteredPosts.map((p) => (
-            <PostCard
-              key={p.post_id}
-              post={p}
-              onClick={() => setSelected(p)}
-              onSaveToggle={(e) => savedPosts.has(p.post_id)
-                ? handleUnsavePost(p.post_id, e)
-                : handleSavePost(p.post_id, e)}
-              isSaved={savedPosts.has(p.post_id)}
-              showSaveButton={!!user}
-            />
-          ))}
+          {filteredPosts.length === 0 && searchQuery.trim() ? (
+            <div className={styles.noResults}>
+              No posts match your search for "{searchQuery}"
+            </div>
+          ) : (
+            displayedPosts.map((p) => (
+              <PostCard
+                key={p.post_id}
+                post={p}
+                onClick={() => setSelected(p)}
+                onSaveToggle={(e) => savedPosts.has(p.post_id)
+                  ? handleUnsavePost(p.post_id, e)
+                  : handleSavePost(p.post_id, e)}
+                isSaved={savedPosts.has(p.post_id)}
+                showSaveButton={!!user}
+              />
+            ))
+          )}
         </section>
       </main>
 
@@ -460,9 +735,14 @@ export default function FeedPage() {
                   <input
                     type="datetime-local"
                     className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                    value={form.event_endtime}
+                    value={form.event_endtime || ""}
                     onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
                   />
+                  {!form.event_endtime && !errors.event_endtime && (
+                    <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                      Click to select a deadline
+                    </div>
+                  )}
                   {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
                 </div>
               ) : (
@@ -472,9 +752,14 @@ export default function FeedPage() {
                     <input
                       type="datetime-local"
                       className={[styles.formInput, errors.event_starttime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                      value={form.event_starttime}
+                      value={form.event_starttime || ""}
                       onChange={(e) => setForm({ ...form, event_starttime: e.target.value })}
                     />
+                    {!form.event_starttime && !errors.event_starttime && (
+                      <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                        Click to select start time
+                      </div>
+                    )}
                     {errors.event_starttime && <div className={styles.errorText}>{errors.event_starttime}</div>}
                   </div>
                   <div>
@@ -482,9 +767,14 @@ export default function FeedPage() {
                     <input
                       type="datetime-local"
                       className={[styles.formInput, errors.event_endtime ? styles.formInputError : ""].filter(Boolean).join(" ")}
-                      value={form.event_endtime}
+                      value={form.event_endtime || ""}
                       onChange={(e) => setForm({ ...form, event_endtime: e.target.value })}
                     />
+                    {!form.event_endtime && !errors.event_endtime && (
+                      <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#a3a3a3', fontSize: '0.75rem' }}>
+                        Click to select end time
+                      </div>
+                    )}
                     {errors.event_endtime && <div className={styles.errorText}>{errors.event_endtime}</div>}
                   </div>
                 </>
@@ -635,7 +925,11 @@ export default function FeedPage() {
                     <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
                   </p>
                   <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {selected.officer_name}</span>
+                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
+                      selected.officer_display_name 
+                        ? `${selected.officer_display_name} (${selected.officer_name})`
+                        : selected.officer_name
+                    }</span>
                   </p>
                 </div>
                 <p className={styles.readModalDate}>
@@ -690,20 +984,32 @@ export default function FeedPage() {
                   <p className={styles.readModalTypeValue}>{selected.post_type}</p>
                 </div>
                 <div className={styles.readModalActions}>
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick(selected)}
-                    className={styles.editButton}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selected)}
-                    className={styles.deleteButton}
-                  >
-                    Delete
-                  </button>
+                  {(() => {
+                    const officerClubNames = new Set(myClubs.map(c => (c.club_name || '').toLowerCase()));
+                    const canModify = selected.club_name && officerClubNames.has(selected.club_name.toLowerCase());
+                    return (
+                      <>
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(selected)}
+                            className={styles.editButton}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canModify && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selected)}
+                            className={styles.deleteButton}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </aside>
             </div>

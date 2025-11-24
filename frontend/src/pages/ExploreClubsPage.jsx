@@ -26,6 +26,10 @@ export default function ExploreClubsPage() {
   const [selectedPost, setSelectedPost] = useState(null);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  // Sort state: 'club_id' (creation order) or 'alphabetical'
+  const [sortMode, setSortMode] = useState('club_id');
   const lastOpenerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [officerInput, setOfficerInput] = useState("");
@@ -218,11 +222,59 @@ export default function ExploreClubsPage() {
   const displayMyClubs = myClubs.filter(c => {
     if (!c.club_type) return true;
     // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
-    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    
+    // Check search query (case-insensitive, partial matching across searchable fields)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        c.club_name,
+        c.club_profile,
+        c.club_type,
+        ...(c.officer_names || [])
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      return matchesType && matchesSearch;
+    }
+    
+    return matchesType;
+  }).sort((a, b) => {
+    if (sortMode === 'alphabetical') {
+      return (a.club_name || '').localeCompare(b.club_name || '');
+    } else {
+      // Sort by club_id (creation order)
+      return (a.club_id || 0) - (b.club_id || 0);
+    }
   });
   const displayAllClubs = allClubs.filter(c => {
     if (!c.club_type) return true;
-    return activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    
+    // Check search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        c.club_name,
+        c.club_profile,
+        c.club_type,
+        ...(c.officer_names || [])
+      ];
+      const matchesSearch = searchableFields.some(field => 
+        field && field.toString().toLowerCase().includes(query)
+      );
+      return matchesType && matchesSearch;
+    }
+    
+    return matchesType;
+  }).sort((a, b) => {
+    if (sortMode === 'alphabetical') {
+      return (a.club_name || '').localeCompare(b.club_name || '');
+    } else {
+      // Sort by club_id (creation order)
+      return (a.club_id || 0) - (b.club_id || 0);
+    }
   });
 
   // Derive dynamic types for rendering filter buttons
@@ -293,8 +345,26 @@ export default function ExploreClubsPage() {
             Session expired — please log in again.
           </div>
         )}
-        {/* Club Type Filters (including dynamic types) */}
-        <div className={styles.typeFiltersBar}>
+        {/* Search Bar */}
+        <div className={styles.searchContainer}>
+          <input
+            type="text"
+            placeholder="Search clubs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+          <div className={styles.searchResultCount}>
+            {searchQuery.trim() && (
+              <span>
+                {tab === "mine" ? displayMyClubs.length : displayAllClubs.length} {((tab === "mine" ? displayMyClubs.length : displayAllClubs.length) === 1) ? 'result' : 'results'} found
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Club Type Filters with Sort Controls */}
+        <div className={styles.typeFiltersBar} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {allFilterTypes.map(t => (
             <button
               key={t}
@@ -305,6 +375,45 @@ export default function ExploreClubsPage() {
               {t}
             </button>
           ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setSortMode('club_id')}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid #e5e5e5',
+                background: sortMode === 'club_id' ? '#fff7ed' : '#fff',
+                color: sortMode === 'club_id' ? '#ea580c' : '#666',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Sort by Default
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('alphabetical')}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid #e5e5e5',
+                background: sortMode === 'alphabetical' ? '#fff7ed' : '#fff',
+                color: sortMode === 'alphabetical' ? '#ea580c' : '#666',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Sort Alphabetically
+            </button>
+          </div>
         </div>
 
         <div className={styles.tabs} role="tablist">
@@ -330,19 +439,6 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
               <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>My Clubs</h2>
-              <button
-                type="button"
-                onClick={refreshClubs}
-                style={{
-                  border:'1px solid #e5e5e5',
-                  background:'#fff',
-                  padding:'0.4rem 0.75rem',
-                  borderRadius:'0.5rem',
-                  cursor:'pointer',
-                  fontSize:'0.8rem',
-                  fontWeight:500
-                }}
-              >Refresh</button>
             </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
@@ -372,19 +468,6 @@ export default function ExploreClubsPage() {
           <section className={styles.section}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
               <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>All Clubs</h2>
-              <button
-                type="button"
-                onClick={refreshClubs}
-                style={{
-                  border:'1px solid #e5e5e5',
-                  background:'#fff',
-                  padding:'0.4rem 0.75rem',
-                  borderRadius:'0.5rem',
-                  cursor:'pointer',
-                  fontSize:'0.8rem',
-                  fontWeight:500
-                }}
-              >Refresh</button>
             </div>
             <div className={styles.grid}>
               {displayAllClubs.map((c) => (

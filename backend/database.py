@@ -55,6 +55,10 @@ class Officer(Base):
     saved_clubs = Column(ARRAY(Integer), default=[])
     officer_clubs = Column(ARRAY(Integer), default=[])
     associated_posts = Column(ARRAY(Integer), default=[])
+    notepad = Column(Text, default='')
+    display_name = Column(Text, default='')
+    # Map to existing DB column name 'officer_preferences'
+    preferences = Column('officer_preferences', ARRAY(Text), default=[])
 
 
 class Club(Base):

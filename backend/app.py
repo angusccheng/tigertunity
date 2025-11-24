@@ -14,13 +14,23 @@ import database
 app = flask.Flask(__name__)
 dotenv.load_dotenv()
 
-FRONTEND_URL = os.environ['FRONTEND_URL']
-APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
+# Allow smoother local dev if env vars are not set
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+APP_SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'dev-secret-key')
+UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
 # CORS configuration for API endpoints
-flask_cors.CORS(app, resources={r'/api/*': {'origins': FRONTEND_URL}})
+_allowed_origins = set()
+if FRONTEND_URL:
+    _allowed_origins.add(FRONTEND_URL)
+# Common dev origins
+_allowed_origins.update({
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+})
+flask_cors.CORS(app, resources={r'/api/*': {'origins': list(_allowed_origins)}})
 
 # JWT Configuration
 app.config['JWT_SECRET_KEY'] = APP_SECRET_KEY
@@ -111,63 +121,10 @@ def login():
 @app.route('/logoutapp', methods=['GET'])
 def logoutapp():
     # Serve a simple logout confirmation page instead of redirecting
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Logged Out - TigerTunity</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }}
-            .container {{
-                background: white;
-                padding: 3rem;
-                border-radius: 1rem;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                text-align: center;
-                max-width: 400px;
-            }}
-            h2 {{
-                color: #333;
-                margin-bottom: 1rem;
-                font-size: 1.75rem;
-            }}
-            p {{
-                color: #666;
-                margin-bottom: 2rem;
-            }}
-            a {{
-                display: inline-block;
-                background: #667eea;
-                color: white;
-                padding: 0.75rem 2rem;
-                border-radius: 0.5rem;
-                text-decoration: none;
-                font-weight: 600;
-                transition: background 0.2s;
-            }}
-            a:hover {{
-                background: #764ba2;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h2>You are logged out of TigerTunity</h2>
-            <p>Your session has been ended successfully.</p>
-            <a href="{FRONTEND_URL}">Return to Home</a>
-        </div>
-    </body>
-    </html>
-    '''
-    return html
+    logout_url = FRONTEND_URL + '/login'
+    print("logout_url", logout_url)
+    response = flask.redirect(logout_url)
+    return response
 
 #-----------------------------------------------------------------------
 
@@ -181,6 +138,10 @@ def logoutcas():
 #-----------------------------------------------------------------------
 # API routes:
 #-----------------------------------------------------------------------
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    return flask.jsonify({'status': 'ok'}), 200
 
 @app.route('/api/gettokens', methods=['GET'])
 def get_tokens():
@@ -235,6 +196,7 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
+<<<<<<< HEAD
     """Get merged user-created posts + AI-parsed posts (20 newest total)."""
     try:
         # ---- 1. USER POSTS ----
@@ -292,6 +254,27 @@ def list_posts():
         # LIMIT TO 20 NEWEST POSTS
         return flask.jsonify(merged_sorted[:20])
 
+=======
+    """Get all posts, limited to 50 most recent"""
+    try:
+        posts = database.get_all_posts(limit=50, order_by='post_time', order_desc=True)
+        posts_dict = [model_to_dict(post) for post in posts]
+        for i, post in enumerate(posts_dict):
+            club_id = post['club_id']
+            officer_id = post['officer_id']
+            club_obj = database.get_club_by_id(club_id)
+            club_name = club_obj.club_name if club_obj else None
+            club_type = getattr(club_obj, 'club_type', None) if club_obj else None
+            officer_obj = database.get_officer_by_id(officer_id)
+            officer_name = officer_obj.officer_name if officer_obj else None
+            officer_display_name = getattr(officer_obj, 'display_name', None) if officer_obj else None
+            posts_dict[i]['club_name'] = club_name
+            posts_dict[i]['club_type'] = club_type
+            posts_dict[i]['officer_name'] = officer_name
+            posts_dict[i]['officer_display_name'] = officer_display_name
+            posts_dict[i]['timestamp'] = post.get('post_time')
+        return flask.jsonify(posts_dict)
+>>>>>>> origin/main
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -310,6 +293,7 @@ def list_posts_by_club(club_id):
             posts_dict[i]['club_name'] = getattr(club, 'club_name', None) if club else None
             posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
             posts_dict[i]['officer_name'] = getattr(officer, 'officer_name', None) if officer else None
+            posts_dict[i]['officer_display_name'] = getattr(officer, 'display_name', None) if officer else None
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
@@ -501,11 +485,11 @@ def delete_club(club_id):
 
         current_user = flask_jwt_extended.get_jwt_identity()
         officer = database.get_officer_by_name(current_user)
-        if officer is None:
+        authorized = officer and officer.officer_id in (club.club_officers or [])
+        if not authorized and not UNRESTRICTED_CLUB_DELETE:
             return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        if officer.officer_id not in (club.club_officers or []):
-            return flask.jsonify({'error': 'Unauthorized'}), 403
+        if not authorized and UNRESTRICTED_CLUB_DELETE:
+            print(f"[UNRESTRICTED_CLUB_DELETE] User '{current_user}' deleting club {club.club_id} without officer authorization")
 
         # 1) Delete all posts for this club
         posts = database.get_posts_by_club(club_id)
@@ -529,7 +513,7 @@ def delete_club(club_id):
         # 4) Finally, delete the club
         database.delete_club(club_id)
 
-        return flask.jsonify({'message': 'Club deleted successfully'})
+        return flask.jsonify({'message': 'Club deleted successfully', 'unrestricted': (not authorized and UNRESTRICTED_CLUB_DELETE)})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -596,12 +580,14 @@ def create_post():
             club = database.get_club_by_id(entry.get('club_id'))
             if club is not None:
                 entry['club_name'] = getattr(club, 'club_name', None)
+                entry['club_type'] = getattr(club, 'club_type', None)
         except Exception:
             pass
         try:
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
 
@@ -634,6 +620,7 @@ def get_post(post_id):
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
         entry['timestamp'] = entry.get('post_time')
@@ -644,16 +631,58 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post"""
+    """Update a post.
+    Authorization: user must be an officer of the club that owns the post.
+    """
     try:
-        data = flask.request.get_json()
-        post = database.update_post(post_id, **data)
-        if post is None:
+        # Fetch existing post
+        existing = database.get_post_by_id(post_id)
+        if existing is None:
             return flask.jsonify({'error': 'Post not found'}), 404
+
+        # Determine club and auth context
+        club = database.get_club_by_id(existing.club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found for post'}), 404
+
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        # Apply updates
+        data = flask.request.get_json() or {}
+        updated = database.update_post(post_id, **data)
+        if updated is None:
+            return flask.jsonify({'error': 'Failed to update'}), 500
+
+        entry = model_to_dict(updated)
+        # Enrich response similar to list endpoints
+        try:
+            club_obj = database.get_club_by_id(entry.get('club_id'))
+            if club_obj is not None:
+                entry['club_name'] = getattr(club_obj, 'club_name', None)
+                entry['club_type'] = getattr(club_obj, 'club_type', None)
+        except Exception:
+            pass
+        try:
+            officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+            if officer_obj is not None:
+                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+                entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
+        except Exception:
+            pass
+        entry['timestamp'] = entry.get('post_time')
+
         return flask.jsonify({
             'message': 'Post updated successfully',
-            'entry': model_to_dict(post)
+            'entry': entry,
+            'editable': True  # Confirms caller had edit rights
         })
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -869,6 +898,142 @@ def unsave_post_from_officer(officer_name, post_id):
         return flask.jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/officers/<string:officer_name>/notepad', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_notepad(officer_name):
+    """Get notepad for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'notepad': ''})
+
+        return flask.jsonify({'notepad': officer.notepad or ''})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/notepad', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_notepad(officer_name):
+    """Update notepad for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        notepad = data.get('notepad', '')
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            # Create officer if doesn't exist
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, notepad=notepad)
+        return flask.jsonify({'message': 'Notepad updated successfully', 'notepad': notepad})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/preferences', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_preferences(officer_name):
+    """Get saved post type preferences for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'preferences': []})
+
+        prefs = getattr(officer, 'preferences', []) or []
+        return flask.jsonify({'preferences': prefs})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/preferences', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_preferences(officer_name):
+    """Update saved post type preferences for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        preferences = data.get('preferences') or []
+        if not isinstance(preferences, list):
+            return flask.jsonify({'error': 'preferences must be a list of strings'}), 400
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, preferences=preferences)
+        return flask.jsonify({'message': 'Preferences updated successfully', 'preferences': preferences})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+@app.route('/api/officers/<string:officer_name>/display-name', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_officer_display_name(officer_name):
+    """Get display_name for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            return flask.jsonify({'display_name': ''})
+
+        return flask.jsonify({'display_name': officer.display_name or ''})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/officers/<string:officer_name>/display-name', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
+def update_officer_display_name(officer_name):
+    """Update display_name for an officer"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        if current_user != officer_name:
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        data = flask.request.get_json() or {}
+        display_name = data.get('display_name', '')
+
+        officer = database.get_officer_by_name(officer_name)
+        if officer is None:
+            # Create officer if doesn't exist
+            officer = database.create_officer(
+                officer_name=officer_name,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        database.update_officer(officer.officer_id, display_name=display_name)
+        return flask.jsonify({'message': 'Display name updated successfully', 'display_name': display_name})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 @app.route('/api/officers/<string:officer_name>/saved-posts', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_saved_posts_for_officer(officer_name):
@@ -900,6 +1065,7 @@ def get_saved_posts_for_officer(officer_name):
                 officer_obj = database.get_officer_by_id(entry.get('officer_id'))
                 if officer_obj is not None:
                     entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+                    entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
             except Exception:
                 pass
             entry['timestamp'] = entry.get('post_time')

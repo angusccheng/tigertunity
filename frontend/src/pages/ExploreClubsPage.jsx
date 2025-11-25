@@ -3,6 +3,7 @@ import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
+import PostCard from "../components/PostCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
@@ -91,7 +92,7 @@ export default function ExploreClubsPage() {
     setClubPostsLoading(false);
     setSelectedPost(null);
     if (lastOpenerRef.current) {
-      try { lastOpenerRef.current.focus(); } catch {}
+      try { lastOpenerRef.current.focus(); } catch { }
     }
   }
 
@@ -223,7 +224,7 @@ export default function ExploreClubsPage() {
     if (!c.club_type) return true;
     // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
     const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
-    
+
     // Check search query (case-insensitive, partial matching across searchable fields)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -233,12 +234,12 @@ export default function ExploreClubsPage() {
         c.club_type,
         ...(c.officer_names || [])
       ];
-      const matchesSearch = searchableFields.some(field => 
+      const matchesSearch = searchableFields.some(field =>
         field && field.toString().toLowerCase().includes(query)
       );
       return matchesType && matchesSearch;
     }
-    
+
     return matchesType;
   }).sort((a, b) => {
     if (sortMode === 'alphabetical') {
@@ -251,7 +252,7 @@ export default function ExploreClubsPage() {
   const displayAllClubs = allClubs.filter(c => {
     if (!c.club_type) return true;
     const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
-    
+
     // Check search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -261,12 +262,12 @@ export default function ExploreClubsPage() {
         c.club_type,
         ...(c.officer_names || [])
       ];
-      const matchesSearch = searchableFields.some(field => 
+      const matchesSearch = searchableFields.some(field =>
         field && field.toString().toLowerCase().includes(query)
       );
       return matchesType && matchesSearch;
     }
-    
+
     return matchesType;
   }).sort((a, b) => {
     if (sortMode === 'alphabetical') {
@@ -365,16 +366,16 @@ export default function ExploreClubsPage() {
         {/* Club Type Filters with Sort Controls */}
         <div className={styles.typeFiltersBar} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {allFilterTypes.map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => toggleClubTypeFilter(t)}
-              className={activeClubTypeFilters.has(t) ? `${styles.typeFilter} ${styles.typeFilterActive}` : `${styles.typeFilter} ${styles.typeFilterInactive}`}
-            >
-              {t}
-            </button>
-          ))}
+            {allFilterTypes.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleClubTypeFilter(t)}
+                className={activeClubTypeFilters.has(t) ? `${styles.typeFilter} ${styles.typeFilterActive}` : `${styles.typeFilter} ${styles.typeFilterInactive}`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
@@ -437,8 +438,8 @@ export default function ExploreClubsPage() {
 
         {tab === "mine" ? (
           <section className={styles.section}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>My Clubs</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>My Clubs</h2>
             </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
@@ -451,6 +452,9 @@ export default function ExploreClubsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
                   aria-label={`View details for ${c.club_name || 'club'}`}
                 >
+                  {c.club_type && (
+                    <div className={styles.clubTypeTag}>{c.club_type}</div>
+                  )}
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -466,8 +470,8 @@ export default function ExploreClubsPage() {
           </section>
         ) : (
           <section className={styles.section}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>All Clubs</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>All Clubs</h2>
             </div>
             <div className={styles.grid}>
               {displayAllClubs.map((c) => (
@@ -480,6 +484,9 @@ export default function ExploreClubsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
                   aria-label={`View details for ${c.club_name || 'club'}`}
                 >
+                  {c.club_type && (
+                    <div className={styles.clubTypeTag}>{c.club_type}</div>
+                  )}
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -504,20 +511,20 @@ export default function ExploreClubsPage() {
                 <span className={styles.formLabel}>Club Name</span>
                 <input className={styles.formInput} value={form.club_name} onChange={(e) => setForm({ ...form, club_name: e.target.value })} placeholder="e.g., Princeton Robotics" />
               </label>
-                <label className={styles.formField}>
-                  <span className={styles.formLabel}>Club Type (required)</span>
-                  <select
-                    className={styles.formInput}
-                    value={form.club_type}
-                    required
-                    onChange={(e) => setForm({ ...form, club_type: e.target.value })}
-                  >
-                    <option value="" disabled>Select a type...</option>
-                    {CLUB_TYPES.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </label>
+              <label className={styles.formField}>
+                <span className={styles.formLabel}>Club Type (required)</span>
+                <select
+                  className={styles.formInput}
+                  value={form.club_type}
+                  required
+                  onChange={(e) => setForm({ ...form, club_type: e.target.value })}
+                >
+                  <option value="" disabled>Select a type...</option>
+                  {CLUB_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
               <div className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Officers (your NetID auto-added)</span>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -533,14 +540,14 @@ export default function ExploreClubsPage() {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {currentUser && (
-                    <span style={{ background:'#ffedd5', border:'1px solid #fdba74', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                    <span style={{ background: '#ffedd5', border: '1px solid #fdba74', padding: '0.25rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
                       {currentUser.trim().toLowerCase()} (you)
                     </span>
                   )}
                   {officers.map(o => (
-                    <span key={o} style={{ display:'inline-flex', alignItems:'center', gap:'0.25rem', background:'#e0f2fe', border:'1px solid #7dd3fc', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                    <span key={o} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '0.25rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
                       {o}
-                      <button type="button" aria-label={`Remove ${o}`} onClick={() => removeOfficer(o)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:'0.9rem', lineHeight:1 }}>✕</button>
+                      <button type="button" aria-label={`Remove ${o}`} onClick={() => removeOfficer(o)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1 }}>✕</button>
                     </span>
                   ))}
                 </div>
@@ -561,9 +568,18 @@ export default function ExploreClubsPage() {
       )}
 
       {selectedClub && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="club-details-title">
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="club-details-title"
+          style={{ overflowY: 'auto' }}
+        >
           <div className={styles.modalBackdrop} onClick={handleCloseDetails} />
-          <div className={styles.modalContent}>
+          <div
+            className={styles.modalContent}
+            style={{ maxHeight: 'calc(100vh - 5rem)', overflowY: 'auto' }}
+          >
             <div className={styles.modalHeader}>
               <h3 id="club-details-title" className={styles.modalTitle}>{selectedClub.club_name || 'Club Details'}</h3>
               <button ref={closeBtnRef} className={styles.closeButton} onClick={handleCloseDetails} aria-label="Close">✕</button>
@@ -597,24 +613,12 @@ export default function ExploreClubsPage() {
                     <p className={styles.postsEmpty}>No posts yet for this club.</p>
                   ) : (
                     clubPosts.map(p => (
-                      <button
+                      <PostCard
                         key={p.post_id}
-                        type="button"
-                        className={styles.postItem}
+                        post={p}
                         onClick={() => setSelectedPost(p)}
-                      >
-                        <div className={styles.postItemMain}>
-                          <div className={styles.postItemTitle}>{p.post_title}</div>
-                          <div className={styles.postItemMeta}>
-                            {p.post_type && <span>Type: {p.post_type}</span>}
-                            {p.timestamp || p.post_time ? (
-                              <span>
-                                {new Date(p.timestamp || p.post_time).toLocaleString()}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
+                        showSaveButton={false}
+                      />
                     ))
                   )}
                 </div>

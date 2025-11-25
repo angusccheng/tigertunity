@@ -4,7 +4,6 @@ import { refreshAccessIfNeeded } from "./auth.js";
 import LoginPage from "./pages/LoginPage.jsx";
 import FeedPage from "./pages/FeedPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
-import LogoutPage from "./pages/LogoutPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ExploreClubsPage from "./pages/ExploreClubsPage.jsx";
 
@@ -18,7 +17,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/logout" element={<LogoutPage />} />
       <Route
         path="/"
         element={

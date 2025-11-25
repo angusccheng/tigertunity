@@ -11,7 +11,7 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
-  const [notepad, setNotepad] = useState("Click to add notes...");
+  const [notepad, setNotepad] = useState("");
   const [isEditingNotepad, setIsEditingNotepad] = useState(false);
   const [notepadLoading, setNotepadLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
@@ -46,7 +46,7 @@ export default function ProfilePage() {
       }
       try {
         const response = await fetchNotepad(user);
-        setNotepad(response.notepad || "Click to add notes...");
+        setNotepad(response.notepad || "");
       } catch (err) {
         console.error("Failed to load notepad:", err);
       } finally {
@@ -137,14 +137,6 @@ export default function ProfilePage() {
     });
   }
 
-  // Placeholder data - replace with actual API calls later
-  const savedEvents = [
-    { id: 1, subject: "Lorem", content: "Ipsum" },
-    { id: 2, subject: "Lorem", content: "Ipsum" },
-    { id: 3, subject: "Lorem", content: "Ipsum" },
-    { id: 4, subject: "Lorem", content: "Ipsum" },
-  ];
-
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -195,6 +187,7 @@ export default function ProfilePage() {
                     value={notepad}
                     onChange={(e) => setNotepad(e.target.value)}
                     onBlur={handleSaveNotepad}
+                    placeholder="Click to add notes..."
                     autoFocus
                     rows={4}
                   />
@@ -203,7 +196,11 @@ export default function ProfilePage() {
                     className={styles.bioDisplay}
                     onClick={() => setIsEditingNotepad(true)}
                   >
-                    {notepad}
+                    {notepad && notepad.trim() !== "" ? (
+                      notepad
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>Click to add notes...</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -211,7 +208,7 @@ export default function ProfilePage() {
               {/* Preferences Section */}
               <div className={styles.bioSection}>
                 <h3 className={styles.bioTitle}>My Preferences</h3>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {POST_TYPES.map((t) => (
                     <button
                       key={t}
@@ -280,7 +277,7 @@ export default function ProfilePage() {
                   </p>
                   <p>
                     <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                      selected.officer_display_name 
+                      selected.officer_display_name
                         ? `${selected.officer_display_name} (${selected.officer_name})`
                         : selected.officer_name
                     }</span>

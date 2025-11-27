@@ -109,7 +109,7 @@ def login():
     username = username.strip().lower()
     database.put_nonce(nonce, username)
     # Create or get the user record for the application
-    database.get_or_create_user(username)
+    database.get_or_create_officer(username)
     
     response = flask.redirect(FRONTEND_URL + original_url + '?nonce=' + nonce)
     
@@ -338,7 +338,7 @@ def create_club():
         for uname in final_usernames:
             officer_obj = database.get_officer_by_name(uname)
             if officer_obj is None:
-                officer_obj = database.create_officer(
+                officer_obj = database.get_or_create_officer(
                     officer_name=uname,
                     saved_posts=[],
                     officer_clubs=[],
@@ -443,10 +443,10 @@ def delete_club(club_id):
                 database.remove_saved_club_from_officer(of.officer_id, club_id)
 
         # 3) Remove club from all users' saved_clubs
-        users = database.get_all_users()
+        users = database.get_all_officers()
         for u in users:
             if (u.saved_clubs and club_id in u.saved_clubs):
-                database.remove_saved_club_from_user(u.user_id, club_id)
+                database.remove_saved_club_from_officer(u.user_id, club_id)
 
         # 4) Finally, delete the club
         database.delete_club(club_id)
@@ -480,7 +480,7 @@ def create_post():
             club = database.create_club(club_name)
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
-            officer = database.create_officer(
+            officer = database.get_or_create_officer(
                 officer_name,
                 associated_posts=[],
                 officer_clubs=[club.club_id],
@@ -661,7 +661,7 @@ def save_club_to_officer(officer_name):
         # Get or create officer
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
-            officer = database.create_officer(officer_name)
+            officer = database.get_or_create_officer(officer_name)
         
         # Add club to saved_clubs
         success = database.add_saved_club_to_officer(officer.officer_id, club_id)
@@ -752,7 +752,7 @@ def save_post_to_officer(officer_name):
         # Ensure officer exists
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
-            officer = database.create_officer(officer_name)
+            officer = database.get_or_create_officer(officer_name)
 
         success = database.add_saved_post_to_officer(officer.officer_id, post_id)
         if success:
@@ -817,7 +817,7 @@ def update_officer_notepad(officer_name):
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
             # Create officer if doesn't exist
-            officer = database.create_officer(
+            officer = database.get_or_create_officer(
                 officer_name=officer_name,
                 saved_posts=[],
                 saved_clubs=[],
@@ -864,7 +864,7 @@ def update_officer_preferences(officer_name):
 
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
-            officer = database.create_officer(
+            officer = database.get_or_create_officer(
                 officer_name=officer_name,
                 saved_posts=[],
                 saved_clubs=[],
@@ -908,7 +908,7 @@ def update_officer_display_name(officer_name):
         officer = database.get_officer_by_name(officer_name)
         if officer is None:
             # Create officer if doesn't exist
-            officer = database.create_officer(
+            officer = database.get_or_create_officer(
                 officer_name=officer_name,
                 saved_posts=[],
                 saved_clubs=[],
@@ -962,3 +962,151 @@ def get_saved_posts_for_officer(officer_name):
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+#-----------------------------------------------------------------------
+# Admin API
+#-----------------------------------------------------------------------
+
+@app.route('/api/admin/club-requests', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def admin_list_club_requests():
+    """Return all club requests for administrators only."""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_officer_by_name(current_user)
+        if officer is None or not getattr(officer, 'admin_status', False):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        club_requests = database.get_all_club_requests() or []
+        requests_list = []
+        for req in club_requests:
+            entry = model_to_dict(req)
+            # Enrich with officer_name and club_name
+            officer_obj = database.get_officer_by_id(entry.get('user_id'))
+            club_obj = database.get_club_by_id(entry.get('club_id'))
+            entry['user_name'] = getattr(officer_obj, 'officer_name', None) if officer_obj else None
+            entry['club_name'] = getattr(club_obj, 'club_name', None) if club_obj else None
+            requests_list.append(entry)
+        return flask.jsonify(requests_list)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+# Club Requests (user submission)
+#-----------------------------------------------------------------------
+
+@app.route('/api/club-requests', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def create_club_request():
+    """Create a club officer request by the authenticated user."""
+    try:
+        data = flask.request.get_json() or {}
+        club_id = data.get('club_id')
+        notes = data.get('notes')
+        if not club_id:
+            return flask.jsonify({'error': 'club_id is required'}), 400
+
+        username = flask_jwt_extended.get_jwt_identity()
+        user = database.get_officer_by_name(username)
+        if user is None:
+            return flask.jsonify({'error': 'User not found'}), 404
+
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+
+        # Prevent duplicate requests
+        if database.exists_club_request(user.officer_id, club_id):
+            return flask.jsonify({'error': 'Request already exists'}), 409
+
+        req = database.create_club_request(user.officer_id, club_id, notes)
+        entry = model_to_dict(req)
+        entry['user_name'] = user.officer_name
+        entry['club_name'] = club.club_name
+        return flask.jsonify({'message': 'Request submitted', 'entry': entry}), 201
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/club-requests/mine', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def list_my_club_requests():
+    """List club requests created by the authenticated user."""
+    try:
+        username = flask_jwt_extended.get_jwt_identity()
+        user = database.get_officer_by_name(username)
+        if user is None:
+            return flask.jsonify([])
+        reqs = database.get_club_requests_by_user(user.officer_id) or []
+        result = []
+        for r in reqs:
+            entry = model_to_dict(r)
+            club = database.get_club_by_id(entry.get('club_id'))
+            if club is not None:
+                entry['club_name'] = getattr(club, 'club_name', None)
+                entry['club_profile'] = getattr(club, 'club_profile', None)
+                entry['club_type'] = getattr(club, 'club_type', None)
+            result.append(entry)
+        return flask.jsonify(result)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/club-requests/<int:request_id>/approve', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def admin_approve_club_request(request_id):
+    """Approve a club request: add user as officer to the club and delete the request."""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        admin_officer = database.get_officer_by_name(current_user)
+        if admin_officer is None or not getattr(admin_officer, 'admin_status', False):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        req = database.get_club_request_by_id(request_id)
+        if req is None:
+            return flask.jsonify({'error': 'Request not found'}), 404
+
+        # Resolve user and club
+        user = database.get_officer_by_id(req.user_id)
+        club = database.get_club_by_id(req.club_id)
+        if user is None or club is None:
+            return flask.jsonify({'error': 'Invalid request data'}), 400
+
+        # Ensure officer record exists for the username
+        username = user.officer_name
+        officer = database.get_officer_by_name(username)
+        if officer is None:
+            officer = database.get_or_create_officer(
+                officer_name=username,
+                saved_posts=[],
+                saved_clubs=[],
+                officer_clubs=[],
+                associated_posts=[]
+            )
+
+        # Add officer to the club if not already
+        database.add_officer_to_club(club.club_id, officer.officer_id)
+        # Link club to officer
+        database.add_club_to_officer(officer.officer_id, club.club_id)
+
+        # Delete the request
+        database.delete_club_request(request_id)
+
+        entry = model_to_dict(club)
+        return flask.jsonify({'message': 'Approved', 'club': entry, 'officer_username': username})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/club-requests/<int:request_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def admin_reject_club_request(request_id):
+    """Reject a club request: delete the request."""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        admin_officer = database.get_officer_by_name(current_user)
+        if admin_officer is None or not getattr(admin_officer, 'admin_status', False):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        ok = database.delete_club_request(request_id)
+        if not ok:
+            return flask.jsonify({'error': 'Request not found'}), 404
+        return flask.jsonify({'message': 'Rejected'})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500

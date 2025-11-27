@@ -4,6 +4,7 @@ import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
+import { fetchAdminClubRequests, approveClubRequest, rejectClubRequest } from "../features/adminApi.js";
 
 export default function ProfilePage() {
   const user = getUser();
@@ -19,6 +20,9 @@ export default function ProfilePage() {
   const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
   const [preferences, setPreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -91,6 +95,34 @@ export default function ProfilePage() {
       }
     }
     loadPreferences();
+  }, [user]);
+
+  // Admin: load club requests if user is admin
+  useEffect(() => {
+    async function loadAdminRequests() {
+      if (!user) {
+        setAdminLoading(false);
+        return;
+      }
+      try {
+        const resp = await fetchAdminClubRequests();
+        if (resp._forbidden) {
+          setIsAdmin(false);
+          setAdminRequests([]);
+        } else {
+          setIsAdmin(true);
+          setAdminRequests(Array.isArray(resp.data) ? resp.data : []);
+        }
+      } catch (err) {
+        // If any error, assume not admin
+        console.error("Failed to load admin club requests:", err);
+        setIsAdmin(false);
+        setAdminRequests([]);
+      } finally {
+        setAdminLoading(false);
+      }
+    }
+    loadAdminRequests();
   }, [user]);
 
   async function handleUnsavePost(postId, e) {
@@ -222,6 +254,62 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+
+              {/* Admin Section */}
+              {isAdmin && (
+                <div className={styles.bioSection}>
+                  <h3 className={styles.bioTitle}>Admin: Club Requests</h3>
+                  {adminLoading ? (
+                    <div className={styles.bioDisplay}>Loading...</div>
+                  ) : adminRequests.length === 0 ? (
+                    <div className={styles.bioDisplay}>No club requests found.</div>
+                  ) : (
+                    <div className={styles.adminRequestsList}>
+                      {adminRequests.map((req) => (
+                        <div key={req.request_id} className={styles.adminRequestItem}>
+                          <div className={styles.adminRequestRow}>
+                            <span className={styles.adminRequestField}><strong>User:</strong> {req.user_name || req.user_id}</span>
+                            <span className={styles.adminRequestField}><strong>Club:</strong> {req.club_name || req.club_id}</span>
+                          </div>
+                          {req.notes && (
+                            <div className={styles.adminRequestNotes}><strong>Notes:</strong> {req.notes}</div>
+                          )}
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await approveClubRequest(req.request_id);
+                                  setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                } catch (err) {
+                                  alert(`Failed to approve: ${err.message}`);
+                                }
+                              }}
+                              className={styles.submitButton}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await rejectClubRequest(req.request_id);
+                                  setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                } catch (err) {
+                                  alert(`Failed to reject: ${err.message}`);
+                                }
+                              }}
+                              className={styles.clearButton}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

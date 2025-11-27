@@ -6,7 +6,7 @@ import Header from "../components/Header.jsx";
 import PostCard from "../components/PostCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests } from "../features/clubsApi.js";
 import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
@@ -25,6 +25,11 @@ export default function ExploreClubsPage() {
   const [clubPosts, setClubPosts] = useState([]);
   const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [requesting, setRequesting] = useState(false);
+  const [requestNotes, setRequestNotes] = useState("");
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [myRequests, setMyRequests] = useState([]);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   // Search state
@@ -39,7 +44,7 @@ export default function ExploreClubsPage() {
 
   useEffect(() => {
     (async () => {
-      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
       setAllClubs(all);
       // Capture any dynamic club types not in the static list and add them to active filters
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
@@ -53,6 +58,7 @@ export default function ExploreClubsPage() {
         setSessionExpired(false);
         setMyClubs(mineRaw || []);
       }
+      setMyRequests(Array.isArray(myReqs) ? myReqs : []);
     })();
   }, []);
 
@@ -284,7 +290,7 @@ export default function ExploreClubsPage() {
 
   async function refreshClubs() {
     try {
-      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
       setAllClubs(all);
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
       if (dynamicTypes.length) {
@@ -297,6 +303,7 @@ export default function ExploreClubsPage() {
         setSessionExpired(false);
         setMyClubs(mineRaw || []);
       }
+      setMyRequests(Array.isArray(myReqs) ? myReqs : []);
     } catch (e) {
       console.error('Failed to refresh clubs', e);
     }
@@ -466,6 +473,49 @@ export default function ExploreClubsPage() {
               <button type="button" className={styles.addCard} onClick={() => setCreating(true)}>
                 <span className={styles.addIcon}>＋</span>
               </button>
+            </div>
+            {/* Requested Clubs Section */}
+            <div style={{ marginTop: '1rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Requested Clubs</h2>
+              <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                {myRequests.length === 0 ? (
+                  <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>No requested clubs.</div>
+                ) : (
+                  myRequests.map((r) => (
+                    <div
+                      className={styles.clubCard}
+                      key={`req-${r.request_id}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => openDetails({
+                        club_id: r.club_id,
+                        club_name: r.club_name,
+                        club_profile: r.club_profile,
+                        club_type: r.club_type
+                      }, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault(); openDetails({
+                            club_id: r.club_id,
+                            club_name: r.club_name,
+                            club_profile: r.club_profile,
+                            club_type: r.club_type
+                          }, e);
+                        }
+                      }}
+                      aria-label={`View details for requested club ${r.club_name || 'club'}`}
+                    >
+                      {r.club_type && (
+                        <div className={styles.clubTypeTag}>{r.club_type}</div>
+                      )}
+                      <div className={styles.clubInfo}>
+                        <div className={styles.clubName}>{r.club_name || "Club Name"}</div>
+                        <div className={styles.clubDescription}>{r.club_profile || "No description available."}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </section>
         ) : (
@@ -656,6 +706,21 @@ export default function ExploreClubsPage() {
                     </button>
                   </>
                 )}
+                {(!myClubs.some(c => c.club_id === selectedClub.club_id) && !myRequests.some(r => r.club_id === selectedClub.club_id)) && (
+                  <button
+                    onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
+                    style={{
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '0.5rem',
+                      background: 'white',
+                      padding: '0.5rem 1rem',
+                      cursor: 'pointer',
+                      fontWeight: 500
+                    }}
+                  >
+                    Request to be an officer
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -738,6 +803,59 @@ export default function ExploreClubsPage() {
                 <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Updating…" : "Update Club"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {requesting && selectedClub && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalBackdrop} onClick={() => setRequesting(false)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Request to be an officer</h3>
+              <button ref={closeBtnRef} className={styles.closeButton} onClick={() => setRequesting(false)}>✕</button>
+            </div>
+            <div className={styles.form}>
+              <div style={{ marginBottom: '0.5rem' }}>
+                You are requesting to be an officer of <strong>{selectedClub.club_name}</strong>.
+              </div>
+              <label className={styles.formFieldFull}>
+                <span className={styles.formLabel}>Notes (optional)</span>
+                <textarea
+                  className={styles.formTextarea}
+                  rows={3}
+                  value={requestNotes}
+                  onChange={(e) => setRequestNotes(e.target.value)}
+                  placeholder="Explain why you should be an officer"
+                />
+              </label>
+              {requestError && <div className={styles.errorText}>{requestError}</div>}
+              <div className={styles.formActions}>
+                <button type="button" className={styles.clearButton} onClick={() => setRequesting(false)}>Cancel</button>
+                <button
+                  type="button"
+                  className={styles.submitButton}
+                  disabled={requestSubmitting}
+                  onClick={async () => {
+                    setRequestSubmitting(true);
+                    setRequestError("");
+                    try {
+                      await requestOfficerForClub(selectedClub.club_id, requestNotes);
+                      alert("Request submitted");
+                      await refreshClubs();
+                      setRequesting(false);
+                    } catch (err) {
+                      console.error("Failed to submit request", err);
+                      setRequestError(err.message || "Failed to submit request");
+                    } finally {
+                      setRequestSubmitting(false);
+                    }
+                  }}
+                >
+                  {requestSubmitting ? "Submitting…" : "Confirm Request"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

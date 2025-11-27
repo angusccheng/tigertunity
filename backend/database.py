@@ -48,6 +48,7 @@ class Officer(Base):
     display_name = Column(Text, default='')
     # Map to existing DB column name 'officer_preferences'
     preferences = Column('officer_preferences', ARRAY(Text), default=[])
+    admin_status = Column(Boolean, default=False)
 
 
 class Club(Base):
@@ -61,6 +62,13 @@ class Club(Base):
     president = Column(Integer, ForeignKey("officer_table.officer_id"))
     vice_president = Column(Integer, ForeignKey("officer_table.officer_id"))
     treasurer = Column(Integer, ForeignKey("officer_table.officer_id"))
+    
+class ClubRequest(Base):
+    __tablename__ = "club_requests"
+    request_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)
+    club_id = Column(Integer, nullable=False)
+    notes = Column(Text)
     
 class Nonce(Base):
     __tablename__ = 'nonces'
@@ -105,7 +113,7 @@ def delete_nonce(nonce):
 #-----------------------------------------------------------------------
 # User operations
 #-----------------------------------------------------------------------
-
+'''
 def get_user_by_id(user_id):
     """Get a user by user_id"""
     with sqlalchemy.orm.Session(_engine) as session:
@@ -183,7 +191,7 @@ def get_all_users():
     """Get all users"""
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(User).all()
-
+'''
 #-----------------------------------------------------------------------
 # Post operations
 #-----------------------------------------------------------------------
@@ -291,20 +299,22 @@ def get_all_officers():
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(Officer).all()
 
-def create_officer(officer_name, saved_posts=None, saved_clubs=None, 
+def get_or_create_officer(officer_name, saved_posts=None, saved_clubs=None, 
                    officer_clubs=None, associated_posts=None):
     """Create a new officer"""
     with sqlalchemy.orm.Session(_engine) as session:
-        officer = Officer(
-            officer_name=officer_name,
-            saved_posts=saved_posts or [],
-            saved_clubs=saved_clubs or [],
-            officer_clubs=officer_clubs or [],
-            associated_posts=associated_posts or []
-        )
-        session.add(officer)
-        session.commit()
-        session.refresh(officer)
+        officer = session.query(Officer).filter(Officer.officer_name == officer_name).first()
+        if officer is None:
+            officer = Officer(
+                officer_name=officer_name,
+                saved_posts=saved_posts or [],
+                saved_clubs=saved_clubs or [],
+                officer_clubs=officer_clubs or [],
+                associated_posts=associated_posts or []
+            )
+            session.add(officer)
+            session.commit()
+            session.refresh(officer)
         return officer
 
 def update_officer(officer_id, **kwargs):
@@ -417,6 +427,17 @@ def remove_saved_club_from_officer(officer_id, club_id):
             officer.saved_clubs.remove(club_id)
         session.commit()
         return True
+    
+def get_officer_admin_status(officer_id):
+    """Check the admin status of an officer"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        status = session.query(Officer.admin_status).filter(Officer.officer_id == officer_id).scalar()
+        return status
+
+def get_all_officers():
+    """Get all officers"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(Officer).all()
 
 #-----------------------------------------------------------------------
 # Club operations
@@ -507,3 +528,47 @@ def remove_officer_from_club(club_id, officer_id):
             club.club_officers.remove(officer_id)
         session.commit()
         return True
+    
+#-----------------------------------------------------------------------
+# Club Request operations
+#-----------------------------------------------------------------------
+
+def get_all_club_requests():
+    """Get all of the club requests"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        club_requests = session.query(ClubRequest).all()
+        return club_requests
+
+def create_club_request(user_id, club_id, notes=None):
+    """Create a new club request"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        req = ClubRequest(user_id=user_id, club_id=club_id, notes=notes)
+        session.add(req)
+        session.commit()
+        session.refresh(req)
+        return req
+
+def get_club_requests_by_user(user_id):
+    """Get all club requests created by a given user"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(ClubRequest).filter(ClubRequest.user_id == user_id).all()
+
+def get_club_request_by_id(request_id):
+    """Get a single club request by id"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(ClubRequest).filter(ClubRequest.request_id == request_id).first()
+
+def delete_club_request(request_id):
+    """Delete a club request by id"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        req = session.query(ClubRequest).filter(ClubRequest.request_id == request_id).first()
+        if req is None:
+            return False
+        session.delete(req)
+        session.commit()
+        return True
+
+def exists_club_request(user_id, club_id):
+    """Check if a club request already exists for user and club"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(ClubRequest).filter(ClubRequest.user_id == user_id, ClubRequest.club_id == club_id).first() is not None

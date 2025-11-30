@@ -468,11 +468,13 @@
   z-index: 10;
   width: 100%;
   max-width: 48rem;
+  max-height: 90vh;
   border-radius: 1rem;
   border: 1px solid #e5e5e5;
   background: white;
   padding: 1.5rem;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
 }
 
 .modalHeader {
@@ -512,4 +514,147 @@
   line-height: 1.5rem;
   color: #404040;
   white-space: pre-wrap;
+}
+
+/* Modal Notes (Club Request) */
+.modalNotes {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #404040;
+  white-space: pre-wrap;
+}
+
+.modalNotes strong {
+  color: #555;
+  font-weight: 700;
+  margin-right: 0;
+  /* align spacing to a single JSX space */
+}
+
+/* Admin Club Request Card Styles */
+.adminRequestsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.requestCard {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.requestCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-right: 0;
+}
+
+.requestTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #171717;
+  margin-bottom: 0.5rem;
+}
+
+.requestButton {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  display: block;
+}
+
+.requestHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.requestInfo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.requestInfo strong {
+  font-weight: 700;
+  margin-right: 0;
+  /* ensure exactly one space from JSX, no extra margin */
+}
+
+.separator {
+  color: #d4d4d4;
+  font-weight: 300;
+}
+
+.requestNotes {
+  font-size: 0.875rem;
+  color: #555;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.requestNotes strong {
+  color: #555;
+  font-weight: 700;
+  margin-right: 0;
+  /* rely on JSX space only */
+}
+
+.requestActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.approveButton,
+.rejectButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  border: 1px solid;
+}
+
+.approveButton {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.approveButton:hover {
+  background: #059669;
+  border-color: #059669;
+  transform: translateY(-1px);
+}
+
+.rejectButton {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.rejectButton:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  transform: translateY(-1px);
 }

@@ -455,6 +455,39 @@ def delete_club(club_id):
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/api/clubs/<int:club_id>/leave', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def leave_club(club_id):
+    """Remove current officer from club's officer list and remove club from officer's officer_clubs array"""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        officer = database.get_member_by_name(current_user)
+        
+        if officer is None:
+            return flask.jsonify({'error': 'Officer not found'}), 404
+        
+        club = database.get_club_by_id(club_id)
+        if club is None:
+            return flask.jsonify({'error': 'Club not found'}), 404
+        
+        # Remove officer from club's club_officers array
+        if officer.user_id in (club.club_officers or []):
+            print('remove_officer_from_club')
+            database.remove_officer_from_club(club_id, officer.user_id)
+        else:
+            return flask.jsonify({'error': 'User is not an officer in the club.'})
+        
+        # Remove club from officer's officer_clubs array
+        if club_id in (officer.officer_clubs or []):
+            print('remove_club_from_member')
+            database.remove_club_from_member(officer.user_id, club_id)
+        else:
+            return flask.jsonify({'error': 'Club is not in user\'s associated clubs.'})
+        
+        return flask.jsonify({'message': 'Successfully left club'})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts', methods=['POST'])
@@ -966,6 +999,7 @@ def admin_list_club_requests():
             officer_obj = database.get_member_by_id(entry.get('user_id'))
             club_obj = database.get_club_by_id(entry.get('club_id'))
             entry['user_name'] = getattr(officer_obj, 'user_name', None) if officer_obj else None
+            entry['display_name'] = getattr(officer_obj, 'display_name', None) if officer_obj else None
             entry['club_name'] = getattr(club_obj, 'club_name', None) if club_obj else None
             requests_list.append(entry)
         return flask.jsonify(requests_list)
@@ -1058,9 +1092,13 @@ def admin_approve_club_request(request_id):
             return flask.jsonify({'error': 'Approved officer does not exist'})
 
         # Add officer to the club if not already
-        database.add_officer_to_club(club.club_id, officer.user_id)
+        if not database.add_officer_to_club(club.club_id, officer.user_id):
+            print('add_oficer_to_club did not work')
+            return flask.jsonify({'error': 'Couldn\'t add officer to club'})
         # Link club to officer
-        database.add_club_to_member(officer.user_id, club.club_id)
+        if not database.add_club_to_member(officer.user_id, club.club_id):
+            print('add_club_to_member does not work')
+            return flask.jsonify({'error': 'Could not add club to member'})
 
         # Delete the request
         database.delete_club_request(request_id)

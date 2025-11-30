@@ -6,7 +6,7 @@ import Header from "../components/Header.jsx";
 import PostCard from "../components/PostCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub } from "../features/clubsApi.js";
 import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
@@ -204,6 +204,33 @@ export default function ExploreClubsPage() {
     } catch (err) {
       console.error('Failed to delete club:', err);
       alert(`Failed to delete club: ${err.message}`);
+    }
+  }
+
+  async function onLeaveClub(c, e) {
+    if (e) e.stopPropagation();
+    const name = c.club_name || 'this club';
+    const ok = window.confirm(`Leave "${name}" as an officer? You will lose officer access to this club.`);
+    if (!ok) return;
+    try {
+      console.log('leaving club');
+      const output = await leaveClub(c.club_id);
+      console.log(output);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
+      if (selectedClub && selectedClub.club_id === c.club_id) {
+        handleCloseDetails();
+      }
+    } catch (err) {
+      console.error('Failed to leave club:', err);
+      alert(`Failed to leave club: ${err.message}`);
     }
   }
 
@@ -691,6 +718,20 @@ export default function ExploreClubsPage() {
                       Edit
                     </button>
                     <button
+                      onClick={(e) => onLeaveClub(selectedClub, e)}
+                      style={{
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        background: '#f59e0b',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Leave Club
+                    </button>
+                    <button
                       onClick={(e) => onDeleteClub(selectedClub, e)}
                       style={{
                         border: 'none',
@@ -706,20 +747,37 @@ export default function ExploreClubsPage() {
                     </button>
                   </>
                 )}
-                {(!myClubs.some(c => c.club_id === selectedClub.club_id) && !myRequests.some(r => r.club_id === selectedClub.club_id)) && (
-                  <button
-                    onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
-                    style={{
-                      border: '1px solid #e5e5e5',
-                      borderRadius: '0.5rem',
-                      background: 'white',
-                      padding: '0.5rem 1rem',
-                      cursor: 'pointer',
-                      fontWeight: 500
-                    }}
-                  >
-                    Request to be an officer
-                  </button>
+                {!myClubs.some(c => c.club_id === selectedClub.club_id) && (
+                  myRequests.some(r => r.club_id === selectedClub.club_id) ? (
+                    <button
+                      disabled
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '0.5rem',
+                        background: '#f3f4f6',
+                        color: '#9ca3af',
+                        padding: '0.5rem 1rem',
+                        cursor: 'not-allowed',
+                        fontWeight: 500
+                      }}
+                    >
+                      Already Requested
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '0.5rem',
+                        background: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Request to be an officer
+                    </button>
+                  )
                 )}
               </div>
             </div>

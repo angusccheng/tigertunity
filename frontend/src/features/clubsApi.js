@@ -93,3 +93,13 @@ export async function fetchMyClubRequests() {
   if (r.status === 401) return [];
   return await handleResponse(r);
 }
+
+export async function leaveClub(clubId) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}/leave`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  return await handleResponse(r);
+}

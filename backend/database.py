@@ -293,7 +293,7 @@ def add_post_to_member(user_id, post_id):
         if member.associated_posts is None:
             member.associated_posts = []
         if post_id not in member.associated_posts:
-            member.associated_posts.append(post_id)
+            member.associated_posts = member.associated_posts + [post_id]
         session.commit()
         return True
 
@@ -332,7 +332,7 @@ def add_saved_club_to_member(user_id, club_id):
         if member.saved_clubs is None:
             member.saved_clubs = []
         if club_id not in member.saved_clubs:
-            member.saved_clubs.append(club_id)
+            member.saved_clubs = member.saved_clubs + [club_id]
         session.commit()
         return True
 

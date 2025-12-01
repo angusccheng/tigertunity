@@ -58,3 +58,16 @@ CREATE TABLE club_requests (
   club_id INTEGER NOT NULL,
   notes TEXT
 );
+
+CREATE TABLE officer_table (
+  user_id SERIAL PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  saved_posts INTEGER[],
+  saved_clubs INTEGER[],
+  officer_clubs INTEGER[],
+  associated_posts INTEGER[],
+  notepad TEXT NOT NULL,
+  admin_status BOOL DEFAULT FALSE,
+  display_name TEXT,
+  user_preferences TEXT[]
+)

@@ -869,7 +869,7 @@ def get_officer_preferences(officer_name):
         if officer is None:
             return flask.jsonify({'preferences': []})
 
-        prefs = getattr(officer, 'preferences', []) or []
+        prefs = getattr(officer, 'user_preferences', []) or []
         return flask.jsonify({'preferences': prefs})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -892,7 +892,7 @@ def update_officer_preferences(officer_name):
         if officer is None:
             return flask.jsonify({'error': 'Member ID does not exist'})
 
-        database.update_member(officer.user_id, preferences=preferences)
+        database.update_member(officer.user_id, user_preferences=preferences)
         return flask.jsonify({'message': 'Preferences updated successfully', 'preferences': preferences})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500

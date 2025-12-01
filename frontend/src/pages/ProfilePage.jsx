@@ -4,6 +4,7 @@ import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
+import { fetchAdminClubRequests, approveClubRequest, rejectClubRequest } from "../features/adminApi.js";
 
 export default function ProfilePage() {
   const user = getUser();
@@ -19,6 +20,10 @@ export default function ProfilePage() {
   const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
   const [preferences, setPreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   useEffect(() => {
     async function loadSavedPosts() {
@@ -91,6 +96,41 @@ export default function ProfilePage() {
       }
     }
     loadPreferences();
+  }, [user]);
+
+  // Admin: load club requests if user is admin
+  useEffect(() => {
+    async function loadAdminRequests() {
+      if (!user) {
+        setAdminLoading(false);
+        return;
+      }
+      try {
+        const resp = await fetchAdminClubRequests();
+        if (resp._forbidden) {
+          setIsAdmin(false);
+          setAdminRequests([]);
+        } else {
+          setIsAdmin(true);
+          const list = Array.isArray(resp.data) ? resp.data : [];
+          // Sort by request_time descending (most recent first)
+          const sorted = [...list].sort((a, b) => {
+            const ta = a && a.request_time ? new Date(a.request_time).getTime() : 0;
+            const tb = b && b.request_time ? new Date(b.request_time).getTime() : 0;
+            return tb - ta;
+          });
+          setAdminRequests(sorted);
+        }
+      } catch (err) {
+        // If any error, assume not admin
+        console.error("Failed to load admin club requests:", err);
+        setIsAdmin(false);
+        setAdminRequests([]);
+      } finally {
+        setAdminLoading(false);
+      }
+    }
+    loadAdminRequests();
   }, [user]);
 
   async function handleUnsavePost(postId, e) {
@@ -222,6 +262,91 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+
+              {/* Admin Section */}
+              {isAdmin && (
+                <div className={styles.bioSection}>
+                  <h3 className={styles.bioTitle}>Admin: Club Requests</h3>
+                  {adminLoading ? (
+                    <div className={styles.bioDisplay}>Loading...</div>
+                  ) : adminRequests.length === 0 ? (
+                    <div className={styles.bioDisplay}>No club requests found.</div>
+                  ) : (
+                    <div className={styles.adminRequestsList}>
+                      {adminRequests.map((req) => {
+                        const UserDisplay = req.display_name
+                          ? `${req.display_name} (${req.user_name})`
+                          : (req.user_name);
+                        return (
+                          <div key={req.request_id} className={styles.requestCard}>
+                            <button
+                              type="button"
+                              className={styles.requestButton}
+                              onClick={() => setSelectedRequest(req)}
+                            >
+                              <div className={styles.requestTitle}>Club Officer Request</div>
+                              <div className={styles.requestHeader}>
+                                <div className={styles.requestInfo}>
+                                  <strong>User:</strong> {UserDisplay}
+                                  <strong>Club:</strong> {req.club_name}
+                                  <strong>Requested:</strong> {new Date(req.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              {req.notes && (
+                                <div className={styles.requestNotes}>
+                                  <strong>Notes:</strong> {req.notes}
+                                </div>
+                              )}
+                            </button>
+                            <div className={styles.requestActions}>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const userDisplay = req.display_name
+                                    ? `${req.display_name} (${req.user_name})`
+                                    : req.user_name;
+                                  const clubName = req.club_name || req.club_id;
+                                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
+                                  if (!ok) return;
+                                  try {
+                                    await approveClubRequest(req.request_id);
+                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                  } catch (err) {
+                                    alert(`Failed to approve: ${err.message}`);
+                                  }
+                                }}
+                                className={styles.approveButton}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const userDisplay = req.display_name
+                                    ? `${req.display_name} (${req.user_name})`
+                                    : req.user_name;
+                                  const clubName = req.club_name || req.club_id;
+                                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}? This will permanently delete their request.`);
+                                  if (!ok) return;
+                                  try {
+                                    await rejectClubRequest(req.request_id);
+                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                  } catch (err) {
+                                    alert(`Failed to reject: ${err.message}`);
+                                  }
+                                }}
+                                className={styles.rejectButton}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -295,6 +420,87 @@ export default function ProfilePage() {
                   <p className={styles.readModalTypeValue}>{selected.post_type}</p>
                 </div>
               </aside>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Details Modal */}
+      {selectedRequest && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedRequest(null)}>
+          <div className={styles.modalBackdrop} />
+          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Club Officer Request Details</h2>
+              <button
+                type="button"
+                onClick={() => setSelectedRequest(null)}
+                className={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+            {(() => {
+              const userDisplay = selectedRequest?.display_name
+                ? `${selectedRequest.display_name} (${selectedRequest.user_name})`
+                : (selectedRequest.user_name);
+              return (
+                <div className={styles.readMeta}>
+                  <div><strong>User:</strong> {userDisplay}</div>
+                  <div><strong>Club:</strong> {selectedRequest.club_name || selectedRequest.club_id}</div>
+                  <div><strong>Requested:</strong> {new Date(selectedRequest.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              );
+            })()}
+            {selectedRequest.notes && (
+              <div className={styles.modalNotes}>
+                <div className={styles.modalNotesLabel}><strong>Notes:</strong></div>
+                <div className={styles.modalNotesBody}>{selectedRequest.notes}</div>
+              </div>
+            )}
+            <div className={styles.requestActions} style={{ marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const userDisplay = selectedRequest.display_name
+                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
+                    : (selectedRequest.user_name || selectedRequest.user_id);
+                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
+                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
+                  if (!ok) return;
+                  try {
+                    await approveClubRequest(selectedRequest.request_id);
+                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
+                    setSelectedRequest(null);
+                  } catch (err) {
+                    alert(`Failed to approve: ${err.message}`);
+                  }
+                }}
+                className={styles.approveButton}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const userDisplay = selectedRequest.display_name
+                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
+                    : (selectedRequest.user_name || selectedRequest.user_id);
+                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
+                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}?`);
+                  if (!ok) return;
+                  try {
+                    await rejectClubRequest(selectedRequest.request_id);
+                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
+                    setSelectedRequest(null);
+                  } catch (err) {
+                    alert(`Failed to reject: ${err.message}`);
+                  }
+                }}
+                className={styles.rejectButton}
+              >
+                Reject
+              </button>
             </div>
           </div>
         </div>

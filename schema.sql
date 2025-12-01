@@ -51,3 +51,10 @@ CREATE TABLE nonces (
     username VARCHAR,
     PRIMARY KEY (nonce)
 );
+
+CREATE TABLE club_requests (
+  request_id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  club_id INTEGER NOT NULL,
+  notes TEXT
+);

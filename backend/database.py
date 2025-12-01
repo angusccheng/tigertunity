@@ -27,20 +27,6 @@ class Post(Base):
     event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
     event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
 
-class Officer(Base):
-    __tablename__ = "officer_table"
-    officer_id = Column(Integer, primary_key=True, autoincrement=True)
-    officer_name = Column(Text, nullable=False)
-    saved_posts = Column(ARRAY(Integer), default=[])
-    saved_clubs = Column(ARRAY(Integer), default=[])
-    officer_clubs = Column(ARRAY(Integer), default=[])
-    associated_posts = Column(ARRAY(Integer), default=[])
-    notepad = Column(Text, default='')
-    display_name = Column(Text, default='')
-    # Map to existing DB column name 'officer_preferences'
-    preferences = Column('officer_preferences', ARRAY(Text), default=[])
-    admin_status = Column(Boolean, default=False)
-
 class Member(Base):
     __tablename__ = "members_table"
     user_id = Column(Integer, primary_key=True, autoincrement=True)

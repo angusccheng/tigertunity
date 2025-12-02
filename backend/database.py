@@ -18,7 +18,7 @@ class Post(Base):
     post_id = Column(Integer, primary_key=True, autoincrement=True)
     post_title = Column(Text, nullable=False)
     club_id = Column(Integer, ForeignKey("club_table.club_id"), nullable=False)
-    officer_id = Column(Integer, ForeignKey("officer_table.officer_id"), nullable=False)
+    officer_id = Column(Integer, ForeignKey("members_table.user_id"), nullable=False)
     post_content = Column(Text, nullable=False)
     post_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     post_type = Column(Text, nullable=False)
@@ -48,9 +48,9 @@ class Club(Base):
     club_type = Column(Text, nullable=False)
     club_filters = Column(ARRAY(Text), default=[])
     club_officers = Column(ARRAY(Integer), default=[])
-    president = Column(Integer, ForeignKey("officer_table.officer_id"))
-    vice_president = Column(Integer, ForeignKey("officer_table.officer_id"))
-    treasurer = Column(Integer, ForeignKey("officer_table.officer_id"))
+    president = Column(Integer, ForeignKey("members_table.user_id"))
+    vice_president = Column(Integer, ForeignKey("members_table.user_id"))
+    treasurer = Column(Integer, ForeignKey("members_table.user_id"))
     
 class ClubRequest(Base):
     __tablename__ = "club_requests"
@@ -329,7 +329,7 @@ def remove_saved_club_from_member(user_id, club_id):
         if member is None or member.saved_clubs is None:
             return False
         if club_id in member.saved_clubs:
-            member.saved_clubs.remove(club_id)
+            member.saved_clubs = [x for x in member.saved_clubs if x != club_id]
         session.commit()
         return True
     
@@ -425,7 +425,7 @@ def remove_officer_from_club(club_id, officer_id):
         if club is None or club.club_officers is None:
             return False
         if officer_id in club.club_officers:
-            club.club_officers.remove(officer_id)
+            club.club_officers = [x for x in club.club_officers if x != officer_id]
         session.commit()
         return True
     

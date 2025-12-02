@@ -4,9 +4,10 @@ import { getUser } from "../auth";
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
 import PostCard from "../components/PostCard.jsx";
+import ClubCard from "../components/ClubCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub, fetchMySavedClubs, saveClub, unsaveClub } from "../features/clubsApi.js";
 import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
@@ -30,6 +31,7 @@ export default function ExploreClubsPage() {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [myRequests, setMyRequests] = useState([]);
+  const [savedClubs, setSavedClubs] = useState([]);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   // Search state
@@ -44,7 +46,12 @@ export default function ExploreClubsPage() {
 
   useEffect(() => {
     (async () => {
-      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
+      const [all, mineRaw, myReqs, savedClubsRaw] = await Promise.all([
+        fetchAllClubs(),
+        fetchMyOfficerClubs(),
+        fetchMyClubRequests(),
+        currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
+      ]);
       setAllClubs(all);
       // Capture any dynamic club types not in the static list and add them to active filters
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
@@ -59,6 +66,7 @@ export default function ExploreClubsPage() {
         setMyClubs(mineRaw || []);
       }
       setMyRequests(Array.isArray(myReqs) ? myReqs : []);
+      setSavedClubs(Array.isArray(savedClubsRaw) ? savedClubsRaw : []);
     })();
   }, []);
 
@@ -317,7 +325,12 @@ export default function ExploreClubsPage() {
 
   async function refreshClubs() {
     try {
-      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
+      const [all, mineRaw, myReqs, savedClubsRaw] = await Promise.all([
+        fetchAllClubs(),
+        fetchMyOfficerClubs(),
+        fetchMyClubRequests(),
+        currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
+      ]);
       setAllClubs(all);
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
       if (dynamicTypes.length) {
@@ -331,6 +344,7 @@ export default function ExploreClubsPage() {
         setMyClubs(mineRaw || []);
       }
       setMyRequests(Array.isArray(myReqs) ? myReqs : []);
+      setSavedClubs(Array.isArray(savedClubsRaw) ? savedClubsRaw : []);
     } catch (e) {
       console.error('Failed to refresh clubs', e);
     }
@@ -359,6 +373,30 @@ export default function ExploreClubsPage() {
       setError(err.message || "Failed to update club");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleToggleSaveClub(clubId, e) {
+    if (e) e.stopPropagation();
+    if (!currentUser) return;
+
+    const isSaved = savedClubs.some(c => c.club_id === clubId);
+
+    try {
+      if (isSaved) {
+        await unsaveClub(currentUser, clubId);
+        setSavedClubs(prev => prev.filter(c => c.club_id !== clubId));
+      } else {
+        await saveClub(currentUser, clubId);
+        // Add the club to saved clubs
+        const club = allClubs.find(c => c.club_id === clubId);
+        if (club) {
+          setSavedClubs(prev => [...prev, club]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle save club:', err);
+      alert(`Failed to ${isSaved ? 'unsave' : 'save'} club: ${err.message}`);
     }
   }
 
@@ -477,24 +515,13 @@ export default function ExploreClubsPage() {
             </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
-                <div
-                  className={styles.clubCard}
+                <ClubCard
                   key={`mine-${c.club_id}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => openDetails(c, e)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                  aria-label={`View details for ${c.club_name || 'club'}`}
-                >
-                  {c.club_type && (
-                    <div className={styles.clubTypeTag}>{c.club_type}</div>
-                  )}
-                  <div className={styles.clubInfo}>
-                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                  </div>
-                </div>
-
+                  club={c}
+                  savedClubs={savedClubs}
+                  onToggleSave={handleToggleSaveClub}
+                  onOpenDetails={openDetails}
+                />
               ))}
 
               <button type="button" className={styles.addCard} onClick={() => setCreating(true)}>
@@ -509,37 +536,18 @@ export default function ExploreClubsPage() {
                   <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>No requested clubs.</div>
                 ) : (
                   myRequests.map((r) => (
-                    <div
-                      className={styles.clubCard}
+                    <ClubCard
                       key={`req-${r.request_id}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => openDetails({
+                      club={{
                         club_id: r.club_id,
                         club_name: r.club_name,
                         club_profile: r.club_profile,
                         club_type: r.club_type
-                      }, e)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault(); openDetails({
-                            club_id: r.club_id,
-                            club_name: r.club_name,
-                            club_profile: r.club_profile,
-                            club_type: r.club_type
-                          }, e);
-                        }
                       }}
-                      aria-label={`View details for requested club ${r.club_name || 'club'}`}
-                    >
-                      {r.club_type && (
-                        <div className={styles.clubTypeTag}>{r.club_type}</div>
-                      )}
-                      <div className={styles.clubInfo}>
-                        <div className={styles.clubName}>{r.club_name || "Club Name"}</div>
-                        <div className={styles.clubDescription}>{r.club_profile || "No description available."}</div>
-                      </div>
-                    </div>
+                      savedClubs={savedClubs}
+                      onToggleSave={handleToggleSaveClub}
+                      onOpenDetails={openDetails}
+                    />
                   ))
                 )}
               </div>
@@ -550,26 +558,37 @@ export default function ExploreClubsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>All Clubs</h2>
             </div>
-            <div className={styles.grid}>
-              {displayAllClubs.map((c) => (
-                <div
-                  className={styles.clubCard}
-                  key={c.club_id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => openDetails(c, e)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                  aria-label={`View details for ${c.club_name || 'club'}`}
-                >
-                  {c.club_type && (
-                    <div className={styles.clubTypeTag}>{c.club_type}</div>
-                  )}
-                  <div className={styles.clubInfo}>
-                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                  </div>
+            {/* Saved Clubs Section */}
+            {savedClubs.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Saved Clubs</h2>
+                <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                  {savedClubs.map((c) => (
+                    <ClubCard
+                      key={`saved-${c.club_id}`}
+                      club={c}
+                      savedClubs={savedClubs}
+                      onToggleSave={handleToggleSaveClub}
+                      onOpenDetails={openDetails}
+                    />
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+            {/* Other Clubs Section */}
+            <div style={{ marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Other Clubs</h2>
+              <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                {displayAllClubs.filter(c => !savedClubs.some(sc => sc.club_id === c.club_id)).map((c) => (
+                  <ClubCard
+                    key={c.club_id}
+                    club={c}
+                    savedClubs={savedClubs}
+                    onToggleSave={handleToggleSaveClub}
+                    onOpenDetails={openDetails}
+                  />
+                ))}
+              </div>
             </div>
           </section>
         )}

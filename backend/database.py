@@ -48,9 +48,6 @@ class Club(Base):
     club_type = Column(Text, nullable=False)
     club_filters = Column(ARRAY(Text), default=[])
     club_officers = Column(ARRAY(Integer), default=[])
-    president = Column(Integer, ForeignKey("officer_table.officer_id"))
-    vice_president = Column(Integer, ForeignKey("officer_table.officer_id"))
-    treasurer = Column(Integer, ForeignKey("officer_table.officer_id"))
     
 class ClubRequest(Base):
     __tablename__ = "club_requests"
@@ -363,8 +360,7 @@ def get_all_clubs():
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(Club).all()
 
-def create_club(club_name, club_profile="", club_type="", club_filters=None, club_officers=None,
-                president=None, vice_president=None, treasurer=None):
+def create_club(club_name, club_profile="", club_type="", club_filters=None, club_officers=None):
     """Create a new club"""
     with sqlalchemy.orm.Session(_engine) as session:
         club = Club(
@@ -372,10 +368,7 @@ def create_club(club_name, club_profile="", club_type="", club_filters=None, clu
             club_profile=club_profile,
             club_type=club_type,
             club_filters=club_filters or [],
-            club_officers=club_officers or [],
-            president=president,
-            vice_president=vice_president,
-            treasurer=treasurer
+            club_officers=club_officers or []
         )
         session.add(club)
         session.commit()

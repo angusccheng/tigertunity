@@ -627,17 +627,6 @@ export default function FeedPage() {
               <PostCard
                 key={p.post_id}
                 post={p}
-<<<<<<< HEAD
-                onClick={() => handleOpenPost(p)}
-                onSaveToggle={(e) => {
-                  if (p.source === "parsed") return; // disable saving
-                  savedPosts.has(p.post_id)
-                    ? handleUnsavePost(p.post_id, e)
-                    : handleSavePost(p.post_id, e);
-                }}
-                isSaved={savedPosts.has(p.post_id)}
-                showSaveButton={p.source !== "parsed" && !!user} // hide save button
-=======
                 onSaveToggle={(e) => savedPosts.has(p.post_id)
                   ? handleUnsavePost(p.post_id, e)
                   : handleSavePost(p.post_id, e)}
@@ -647,7 +636,6 @@ export default function FeedPage() {
                 onDelete={handleDelete}
                 onUpdatePost={handleUpdatePost}
                 submitting={submitting}
->>>>>>> origin/main
               />
             ))
           )}

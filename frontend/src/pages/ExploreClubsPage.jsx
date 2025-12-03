@@ -3,12 +3,10 @@ import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
-import PostCard from "../components/PostCard.jsx";
 import ClubCard from "../components/ClubCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
 import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub, fetchMySavedClubs, saveClub, unsaveClub } from "../features/clubsApi.js";
-import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
@@ -22,11 +20,9 @@ export default function ExploreClubsPage() {
   const [form, setForm] = useState({ club_name: "", club_type: "", club_profile: "" });
   const [editForm, setEditForm] = useState({ club_type: "", club_profile: "" });
   const [error, setError] = useState("");
-  const [selectedClub, setSelectedClub] = useState(null);
-  const [clubPosts, setClubPosts] = useState([]);
-  const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [requesting, setRequesting] = useState(false);
+  const [selectedClubForRequest, setSelectedClubForRequest] = useState(null);
   const [requestNotes, setRequestNotes] = useState("");
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState("");
@@ -75,11 +71,10 @@ export default function ExploreClubsPage() {
       if (e.key === "Escape") {
         if (creating) setCreating(false);
         if (editing) setEditing(false);
-        if (selectedClub) handleCloseDetails();
         if (selectedPost) setSelectedPost(null);
       }
     }
-    if (creating || editing || selectedClub || selectedPost) {
+    if (creating || editing || selectedPost) {
       document.addEventListener("keydown", onKeyDown);
       // move focus to close button on open
       setTimeout(() => {
@@ -93,41 +88,7 @@ export default function ExploreClubsPage() {
         document.body.style.overflow = overflow;
       };
     }
-  }, [creating, editing, selectedClub, selectedPost]);
-
-  function openDetails(c, e) {
-    lastOpenerRef.current = e?.currentTarget || null;
-    setSelectedClub(c);
-  }
-
-  function handleCloseDetails() {
-    setSelectedClub(null);
-    setClubPosts([]);
-    setClubPostsLoading(false);
-    setSelectedPost(null);
-    if (lastOpenerRef.current) {
-      try { lastOpenerRef.current.focus(); } catch { }
-    }
-  }
-
-  useEffect(() => {
-    async function loadClubPosts() {
-      if (!selectedClub) return;
-      setClubPostsLoading(true);
-      try {
-        const posts = await fetchPostsByClub(selectedClub.club_id);
-        // show most recent first
-        const sorted = [...posts].sort((a, b) => new Date(b.post_time || b.timestamp || 0) - new Date(a.post_time || a.timestamp || 0));
-        setClubPosts(sorted);
-      } catch (e) {
-        console.error('Failed to load club posts', e);
-        setClubPosts([]);
-      } finally {
-        setClubPostsLoading(false);
-      }
-    }
-    loadClubPosts();
-  }, [selectedClub]);
+  }, [creating, editing, selectedPost]);
 
   async function onCreate(e) {
     e.preventDefault();
@@ -520,7 +481,18 @@ export default function ExploreClubsPage() {
                   club={c}
                   savedClubs={savedClubs}
                   onToggleSave={handleToggleSaveClub}
-                  onOpenDetails={openDetails}
+                  myClubs={myClubs}
+                  myRequests={myRequests}
+                  onEdit={handleEditClick}
+                  onLeave={onLeaveClub}
+                  onDelete={onDeleteClub}
+                  onRequestOfficer={() => {
+                    setSelectedClubForRequest(c);
+                    setRequesting(true);
+                    setRequestNotes("");
+                    setRequestError("");
+                  }}
+                  onPostClick={setSelectedPost}
                 />
               ))}
 
@@ -546,7 +518,17 @@ export default function ExploreClubsPage() {
                       }}
                       savedClubs={savedClubs}
                       onToggleSave={handleToggleSaveClub}
-                      onOpenDetails={openDetails}
+                      myClubs={myClubs}
+                      myRequests={myRequests}
+                      onEdit={handleEditClick}
+                      onLeave={onLeaveClub}
+                      onDelete={onDeleteClub}
+                      onRequestOfficer={() => {
+                        setRequesting(true);
+                        setRequestNotes("");
+                        setRequestError("");
+                      }}
+                      onPostClick={setSelectedPost}
                     />
                   ))
                 )}
@@ -569,7 +551,17 @@ export default function ExploreClubsPage() {
                       club={c}
                       savedClubs={savedClubs}
                       onToggleSave={handleToggleSaveClub}
-                      onOpenDetails={openDetails}
+                      myClubs={myClubs}
+                      myRequests={myRequests}
+                      onEdit={handleEditClick}
+                      onLeave={onLeaveClub}
+                      onDelete={onDeleteClub}
+                      onRequestOfficer={() => {
+                        setRequesting(true);
+                        setRequestNotes("");
+                        setRequestError("");
+                      }}
+                      onPostClick={setSelectedPost}
                     />
                   ))}
                 </div>
@@ -585,7 +577,17 @@ export default function ExploreClubsPage() {
                     club={c}
                     savedClubs={savedClubs}
                     onToggleSave={handleToggleSaveClub}
-                    onOpenDetails={openDetails}
+                    myClubs={myClubs}
+                    myRequests={myRequests}
+                    onEdit={handleEditClick}
+                    onLeave={onLeaveClub}
+                    onDelete={onDeleteClub}
+                    onRequestOfficer={() => {
+                      setRequesting(true);
+                      setRequestNotes("");
+                      setRequestError("");
+                    }}
+                    onPostClick={setSelectedPost}
                   />
                 ))}
               </div>
@@ -663,189 +665,6 @@ export default function ExploreClubsPage() {
         </div>
       )}
 
-      {selectedClub && (
-        <div
-          className={styles.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="club-details-title"
-          style={{ overflowY: 'auto' }}
-        >
-          <div className={styles.modalBackdrop} onClick={handleCloseDetails} />
-          <div
-            className={styles.modalContent}
-            style={{ maxHeight: 'calc(100vh - 5rem)', overflowY: 'auto' }}
-          >
-            <div className={styles.modalHeader}>
-              <h3 id="club-details-title" className={styles.modalTitle}>{selectedClub.club_name || 'Club Details'}</h3>
-              <button ref={closeBtnRef} className={styles.closeButton} onClick={handleCloseDetails} aria-label="Close">✕</button>
-            </div>
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              {selectedClub.club_type && (
-                <div><strong>Type:</strong> {selectedClub.club_type}</div>
-              )}
-              <div>
-                <strong>About:</strong>
-                <div style={{ marginTop: '0.25rem', color: '#525252', lineHeight: 1.4 }}>
-                  {selectedClub.club_profile || 'No description available.'}
-                </div>
-              </div>
-              {selectedClub.officer_names && selectedClub.officer_names.length > 0 && (
-                <div>
-                  <strong>Officers:</strong>
-                  <div style={{ marginTop: '0.25rem', color: '#525252' }}>
-                    {selectedClub.officer_names.join(', ')}
-                  </div>
-                </div>
-              )}
-
-              {/* Club Posts */}
-              <div className={styles.postsCard}>
-                <h4 className={styles.postsTitle}>Club Posts</h4>
-                <div className={styles.postsList}>
-                  {clubPostsLoading ? (
-                    <p className={styles.postsLoading}>Loading…</p>
-                  ) : clubPosts.length === 0 ? (
-                    <p className={styles.postsEmpty}>No posts yet for this club.</p>
-                  ) : (
-                    clubPosts.map(p => (
-                      <PostCard
-                        key={p.post_id}
-                        post={p}
-                        onClick={() => setSelectedPost(p)}
-                        showSaveButton={false}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-              {/* Room for actions: Save/Join, View Posts, etc. */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {myClubs.some(c => c.club_id === selectedClub.club_id) && (
-                  <>
-                    <button
-                      onClick={() => handleEditClick(selectedClub)}
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => onLeaveClub(selectedClub, e)}
-                      style={{
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        background: '#f59e0b',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Leave Club
-                    </button>
-                    <button
-                      onClick={(e) => onDeleteClub(selectedClub, e)}
-                      style={{
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        background: '#ef4444',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-                {!myClubs.some(c => c.club_id === selectedClub.club_id) && (
-                  myRequests.some(r => r.club_id === selectedClub.club_id) ? (
-                    <button
-                      disabled
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: '#f3f4f6',
-                        color: '#9ca3af',
-                        padding: '0.5rem 1rem',
-                        cursor: 'not-allowed',
-                        fontWeight: 500
-                      }}
-                    >
-                      Already Requested
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Request to be an officer
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedPost && (
-        <div className={profileStyles.modalOverlay}>
-          <div className={profileStyles.modalBackdrop} onClick={() => setSelectedPost(null)} />
-          <div className={profileStyles.readModalContent}>
-            <div className={profileStyles.modalHeader}>
-              <h2 className={profileStyles.modalTitle}>{selectedPost.post_title}</h2>
-              <button
-                type="button"
-                onClick={() => setSelectedPost(null)}
-                className={profileStyles.closeButton}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className={profileStyles.readModalGrid}>
-              <div className={profileStyles.readModalMain}>
-                <div className={profileStyles.readModalMeta}>
-                  <p>
-                    <span className={profileStyles.readModalMetaText}> <strong> Club: </strong> {selectedPost.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={profileStyles.readModalMetaText}> <strong> Officer: </strong> {selectedPost.officer_name}</span>
-                  </p>
-                </div>
-                <p className={profileStyles.readModalDate}>
-                  {selectedPost.timestamp || selectedPost.post_time ? new Date(selectedPost.timestamp || selectedPost.post_time).toLocaleString() : ""}
-                </p>
-                <p className={profileStyles.readModalContentText}>{selectedPost.post_description || selectedPost.post_content || ""}</p>
-              </div>
-
-              <aside className={profileStyles.readModalSidebar}>
-                <div className={profileStyles.readModalType}>
-                  <p>Type:</p>
-                  <p className={profileStyles.readModalTypeValue}>{selectedPost.post_type}</p>
-                </div>
-              </aside>
-            </div>
-          </div>
-        </div>
-      )}
-
       {editing && editingClub && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalBackdrop} onClick={() => setEditing(false)} />
@@ -884,7 +703,7 @@ export default function ExploreClubsPage() {
         </div>
       )}
 
-      {requesting && selectedClub && (
+      {requesting && selectedClubForRequest && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalBackdrop} onClick={() => setRequesting(false)} />
           <div className={styles.modalContent}>
@@ -894,7 +713,7 @@ export default function ExploreClubsPage() {
             </div>
             <div className={styles.form}>
               <div style={{ marginBottom: '0.5rem' }}>
-                You are requesting to be an officer of <strong>{selectedClub.club_name}</strong>.
+                You are requesting to be an officer of <strong>{selectedClubForRequest.club_name}</strong>.
               </div>
               <label className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Notes (optional)</span>
@@ -917,7 +736,7 @@ export default function ExploreClubsPage() {
                     setRequestSubmitting(true);
                     setRequestError("");
                     try {
-                      await requestOfficerForClub(selectedClub.club_id, requestNotes);
+                      await requestOfficerForClub(selectedClubForRequest.club_id, requestNotes);
                       alert("Request submitted");
                       await refreshClubs();
                       setRequesting(false);

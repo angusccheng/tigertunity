@@ -141,6 +141,134 @@ def logoutcas():
 def health():
     return flask.jsonify({'status': 'ok'}), 200
 
+#-----------------------------------------------------------------------
+# DM / Users
+#-----------------------------------------------------------------------
+
+@app.route('/api/users', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def list_users():
+    """Return list of member usernames for DM picker."""
+    try:
+        users = database.get_all_members()
+        names = [u.user_name for u in users if getattr(u, 'user_name', None)]
+        current = flask_jwt_extended.get_jwt_identity()
+        names = [n for n in names if n != current]
+        return flask.jsonify(names)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/conversations', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def list_conversations():
+    """List conversations for the current user with last message preview."""
+    try:
+        current = flask_jwt_extended.get_jwt_identity()
+        with database.sqlalchemy.orm.Session(database._engine) as session:
+            Conversation = database.Conversation
+            DMMessage = database.DMMessage
+            convs = session.query(Conversation).filter(
+                (Conversation.user1 == current) | (Conversation.user2 == current)
+            ).order_by(Conversation.last_updated.desc()).all()
+
+            result = []
+            for c in convs:
+                other = c.user2 if c.user1 == current else c.user1
+                last = session.query(DMMessage).filter(DMMessage.conversation_id == c.id)\
+                    .order_by(DMMessage.timestamp.desc()).first()
+                entry = {
+                    'conversation_id': c.id,
+                    'other_user': other,
+                    'last_message': getattr(last, 'text', None) if last else None,
+                    'last_timestamp': getattr(last, 'timestamp', None) if last else None,
+                }
+                result.append(entry)
+        return flask.jsonify(result)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/dm/<string:other_user>', methods=['GET'])
+@flask_jwt_extended.jwt_required()
+def get_dm_history(other_user):
+    """Return DM history between current user and other_user."""
+    try:
+        current = flask_jwt_extended.get_jwt_identity()
+        if other_user == current:
+            return flask.jsonify({'error': 'cannot DM yourself'}), 400
+        # Validate other exists
+        other_member = database.get_member_by_name(other_user)
+        if other_member is None:
+            return flask.jsonify({'error': 'user not found'}), 404
+
+        with database.sqlalchemy.orm.Session(database._engine) as session:
+            Conversation = database.Conversation
+            DMMessage = database.DMMessage
+            a, b = sorted([current, other_user])
+            conv = session.query(Conversation).filter(
+                (Conversation.user1 == a) & (Conversation.user2 == b)
+            ).first()
+            if conv is None:
+                return flask.jsonify([])
+            msgs = session.query(DMMessage).filter(DMMessage.conversation_id == conv.id)\
+                .order_by(DMMessage.timestamp.asc()).all()
+            result = [
+                {
+                    'id': m.id,
+                    'sender': m.sender,
+                    'text': m.text,
+                    'timestamp': m.timestamp,
+                } for m in msgs
+            ]
+        return flask.jsonify(result)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/dm/<string:receiver>', methods=['POST'])
+@flask_jwt_extended.jwt_required()
+def send_dm(receiver):
+    """Send a DM to receiver; create conversation if needed."""
+    try:
+        current = flask_jwt_extended.get_jwt_identity()
+        if receiver == current:
+            return flask.jsonify({'error': 'cannot DM yourself'}), 400
+
+        # Validate receiver exists
+        other_member = database.get_member_by_name(receiver)
+        if other_member is None:
+            return flask.jsonify({'error': 'user not found'}), 404
+
+        data = flask.request.get_json() or {}
+        text = (data.get('text') or '').strip()
+        if not text:
+            return flask.jsonify({'error': 'text is required'}), 400
+
+        with database.sqlalchemy.orm.Session(database._engine) as session:
+            Conversation = database.Conversation
+            DMMessage = database.DMMessage
+            a, b = sorted([current, receiver])
+            conv = session.query(Conversation).filter(
+                (Conversation.user1 == a) & (Conversation.user2 == b)
+            ).first()
+            if conv is None:
+                conv = Conversation(user1=a, user2=b)
+                session.add(conv)
+                session.commit()
+                session.refresh(conv)
+
+            msg = DMMessage(conversation_id=conv.id, sender=current, text=text)
+            session.add(msg)
+            conv.last_updated = database.func.now()
+            session.commit()
+            session.refresh(msg)
+        return flask.jsonify({
+            'id': msg.id,
+            'sender': msg.sender,
+            'text': msg.text,
+            'timestamp': msg.timestamp,
+        })
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 @app.route('/api/gettokens', methods=['GET'])
 def get_tokens():
     nonce = flask.request.args.get('nonce')

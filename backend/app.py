@@ -763,17 +763,42 @@ def get_saved_clubs_for_officer(officer_name):
 #-----------------------------------------------------------------------
 # Zapier Webhook Ingest
 #-----------------------------------------------------------------------
+# app.py (New/Revised Code)
+
 @app.route("/api/zapier_ingest", methods=["POST"])
 def zapier_ingest():
     try:
-        data = flask.request.get_json()
+        # Use force=True to bypass Content-Type check, but this could return None
+        payload = flask.request.get_json(force=True)
 
+        # --- Robust Payload Handling ---
+        # Zapier sometimes wraps the main JSON object inside a key called "json"
+        if isinstance(payload, dict) and "json" in payload:
+            try:
+                # Attempt to load the string inside the "json" key
+                data = json.loads(payload["json"])
+            except json.JSONDecodeError:
+                # If the nested JSON is invalid, return an error
+                return flask.jsonify({"success": False, "error": "Invalid nested JSON payload"}), 400
+        else:
+            # Assume 'payload' is the correct dictionary (or None if body was empty)
+            data = payload
+        
+        # If data is None after parsing, the request body was empty or unreadable
+        if data is None:
+            return flask.jsonify({
+                "success": False,
+                "error": "Request body empty or not valid JSON"
+            }), 400
+        # --- End Robust Payload Handling ---
+        
+        # Extract fields from the 'data' dictionary
         post_title   = (data.get("post_title") or "").strip()
         club_name    = (data.get("club_name") or "").strip()
+        # Note: You still need to ensure 'json' is imported from line 10
         officer_name = (data.get("officer_name") or "tigertunity-bot").strip() or "tigertunity-bot"
         post_content = (data.get("post_content") or "").strip()
         post_type    = (data.get("post_type") or "").strip() or "announcement"
-
 
         if not post_title or not club_name or not post_content:
             return flask.jsonify({
@@ -783,6 +808,7 @@ def zapier_ingest():
         
         # store in parsed_posts table
         row = database.create_parsed_post(
+            # ... (your database logic)
             post_title=post_title,
             club_name=club_name,
             officer_name=officer_name,
@@ -796,6 +822,7 @@ def zapier_ingest():
         })
 
     except Exception as e:
+        # Catch any other runtime errors (like database errors)
         return flask.jsonify({"error": str(e)}), 500
 
 @app.route('/api/parsed-posts/<int:parsed_id>', methods=['GET'])

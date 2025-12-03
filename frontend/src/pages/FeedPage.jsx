@@ -258,6 +258,20 @@ export default function FeedPage() {
     }
   }
 
+  async function handleOpenPost(post) {
+  // Parsed post → fetch /api/parsed-posts/<id>
+  if (post.source === "parsed" || (typeof post.post_id === "string" && post.post_id.startsWith("parsed-"))) {
+    const parsedId = post.post_id.split("-")[1];  
+    const res = await fetch(`/api/parsed-posts/${parsedId}`);
+    const parsed = await res.json();
+    setSelected(parsed);
+  } else {
+    // Regular post – already has full content
+    setSelected(post);
+  }
+}
+
+
   function togglePostFilter(filter) {
     setActivePostFilters(prev => {
       const newSet = new Set(prev);
@@ -632,12 +646,15 @@ export default function FeedPage() {
               <PostCard
                 key={p.post_id}
                 post={p}
-                onClick={() => setSelected(p)}
-                onSaveToggle={(e) => savedPosts.has(p.post_id)
-                  ? handleUnsavePost(p.post_id, e)
-                  : handleSavePost(p.post_id, e)}
+                onClick={() => handleOpenPost(p)}
+                onSaveToggle={(e) => {
+                  if (p.source === "parsed") return; // disable saving
+                  savedPosts.has(p.post_id)
+                    ? handleUnsavePost(p.post_id, e)
+                    : handleSavePost(p.post_id, e);
+                }}
                 isSaved={savedPosts.has(p.post_id)}
-                showSaveButton={!!user}
+                showSaveButton={p.source !== "parsed" && !!user} // hide save button
               />
             ))
           )}

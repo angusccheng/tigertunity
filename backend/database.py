@@ -1,7 +1,9 @@
 import os
+import dotenv
+import sqlalchemy
+
 from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, func, ForeignKey, TIMESTAMP
 import sqlalchemy.orm
-import dotenv
 
 #-----------------------------------------------------------------------
 
@@ -62,7 +64,30 @@ class Nonce(Base):
     nonce = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
     username = sqlalchemy.Column(sqlalchemy.String)
 
+
+# ---------------- DM TABLES -----------------
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user1 = Column(Text, nullable=False)
+    user2 = Column(Text, nullable=False)
+    last_updated = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class DMMessage(Base):
+    __tablename__ = "dm_messages"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
+    sender = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
+    timestamp = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
 _engine = sqlalchemy.create_engine(_database_url)
+
+# Create DM tables if they don't exist (safe for existing tables)
+Base.metadata.create_all(_engine)
 
 #-----------------------------------------------------------------------
 # Nonce operations

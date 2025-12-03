@@ -43,7 +43,6 @@ jwtManager = flask_jwt_extended.JWTManager(app)
 
 # Return url after stripping out the "ticket" parameter that was
 # added by the CAS server.
-
 def strip_ticket(url):
     if url is None:
         return "something is badly wrong"
@@ -232,6 +231,25 @@ def list_posts_by_club(club_id):
             posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
             posts_dict[i]['officer_name'] = getattr(officer, 'user_name', None) if officer else None
             posts_dict[i]['officer_display_name'] = getattr(officer, 'display_name', None) if officer else None
+            posts_dict[i]['timestamp'] = post.get('post_time')
+        return flask.jsonify(posts_dict)
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
+#-----------------------------------------------------------------------
+
+@app.route('/api/clubs/<int:club_id>/posts', methods=['GET'])
+def list_posts_by_club(club_id):
+    """Get posts associated with a specific club"""
+    try:
+        posts = database.get_posts_by_club(club_id) or []
+        posts_dict = [model_to_dict(post) for post in posts]
+        for i, post in enumerate(posts_dict):
+            club = database.get_club_by_id(post['club_id'])
+            officer = database.get_officer_by_id(post['officer_id'])
+            posts_dict[i]['club_name'] = getattr(club, 'club_name', None) if club else None
+            posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
+            posts_dict[i]['officer_name'] = getattr(officer, 'officer_name', None) if officer else None
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:

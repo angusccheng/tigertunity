@@ -658,3 +658,246 @@
   border-color: #dc2626;
   transform: translateY(-1px);
 }
+.chatContainer {
+    background: #E5E5E5;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* DM Inbox styles */
+
+.dmInboxCard {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.dmInboxTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #737373;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dmList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dmItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e5e5;
+  background: #fafafa;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+.dmItem:hover {
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+  transform: translateY(-1px);
+}
+
+.dmAvatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: #e5e5e5;
+  flex-shrink: 0;
+}
+
+.dmTextBlock {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dmName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #171717;
+}
+
+.dmPreview {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dmTimestamp {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.dmInboxCard {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.dmInboxHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.newDMButton {
+  background: #ff9000;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dmList {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dmItem {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dmAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: #ddd;
+  flex-shrink: 0;
+}
+
+.dmTextBlock {
+  flex: 1;
+}
+
+.dmName {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.dmPreview {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+/* NEW DM MODAL */
+.newDMModal {
+  position: relative;
+  z-index: 50;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 300px;
+  margin: auto;
+  border: 1px solid #e5e5e5;
+}
+
+.newDMTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.newDMInput {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.startDMButton {
+  width: 100%;
+  padding: 0.6rem;
+  background: #ff9000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ========================= */
+/* USER PICKER MODAL */
+/* ========================= */
+
+.userPicker {
+  position: relative;
+  z-index: 20;
+  width: 22rem;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.userPicker h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #171717;
+}
+
+.userRow {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  margin-bottom: 0.5rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.userRow:hover {
+  background: #f0f0f0;
+  border-color: #d4d4d4;
+}
+
+.dmAvatarSmall {
+  width: 32px;
+  height: 32px;
+  background: #ddd;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Fix overlay dim + center modal properly */
+.modalOverlay {
+  backdrop-filter: blur(4px);
+}

@@ -37,7 +37,7 @@ class ParsedPost(Base):
     officer_name = Column(Text, nullable=False, default="tigertunity-bot")
     post_content = Column(Text, nullable=False)
     post_type = Column(Text, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
 class User(Base):
     __tablename__ = "user_table"
@@ -524,6 +524,7 @@ def remove_officer_from_club(club_id, officer_id):
 #-----------------------------------------------------------------------
 
 def create_parsed_post(post_title, club_name, officer_name, post_content, post_type):
+    """Insert a new parsed post row (used by Zapier ingest)."""
     with sqlalchemy.orm.Session(_engine) as session:
         row = ParsedPost(
             post_title=post_title,
@@ -538,6 +539,7 @@ def create_parsed_post(post_title, club_name, officer_name, post_content, post_t
         return row
 
 def get_all_parsed_posts(limit=None):
+    """Return parsed posts newest first (optionally limited)."""
     with sqlalchemy.orm.Session(_engine) as session:
         query = session.query(ParsedPost).order_by(ParsedPost.created_at.desc())
         if limit:
@@ -545,6 +547,7 @@ def get_all_parsed_posts(limit=None):
         return query.all()
     
 def get_parsed_post_by_id(parsed_id):
+    """Return a single parsed post by parsed_id."""
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(ParsedPost).filter(ParsedPost.parsed_id == parsed_id).first()
 

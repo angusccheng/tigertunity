@@ -1,3 +1,4 @@
+-- tigertunity/schema.sql
 -- commands for creating all of the tables
 CREATE TABLE post_table (
   post_id SERIAL PRIMARY KEY,
@@ -9,9 +10,6 @@ CREATE TABLE post_table (
   post_type TEXT NOT NULL,
   edit_time TIMESTAMP DEFAULT NOW(),
   edit_status BOOL DEFAULT FALSE
-  post_filters TEXT[],
-  location TEXT,
-  link TEXT
 )
 
 CREATE TABLE user_table (
@@ -27,12 +25,7 @@ CREATE TABLE officer_table (
   saved_posts INTEGER[],
   saved_clubs INTEGER[],
   officer_clubs INTEGER[],
-  associated_posts INTEGER[],
-  notepad TEXT NOT NULL,
-  officer_status BOOL DEFAULT FALSE,
-  admin_status BOOL DEFAULT FALSE,
-  display_name TEXT,
-  officer_preferences TEXT[]
+  associated_posts INTEGER[]
 )
 
 CREATE TABLE club_table (
@@ -52,3 +45,13 @@ CREATE TABLE nonces (
     PRIMARY KEY (nonce)
 );
 
+-- Table for AI-parsed / Zapier-ingested posts
+CREATE TABLE parsed_posts (
+    parsed_id SERIAL PRIMARY KEY,
+    post_title TEXT NOT NULL,
+    club_name TEXT NOT NULL,
+    officer_name TEXT NOT NULL DEFAULT 'tigertunity-bot',
+    post_content TEXT NOT NULL,
+    post_type TEXT NOT NULL,
+    post_time TIMESTAMP DEFAULT NOW()
+);

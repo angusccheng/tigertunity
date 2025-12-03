@@ -14,23 +14,13 @@ import database
 app = flask.Flask(__name__)
 dotenv.load_dotenv()
 
-# Allow smoother local dev if env vars are not set
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
-APP_SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'dev-secret-key')
-UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
+FRONTEND_URL = os.environ['FRONTEND_URL']
+APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
 # CORS configuration for API endpoints
-_allowed_origins = set()
-if FRONTEND_URL:
-    _allowed_origins.add(FRONTEND_URL)
-# Common dev origins
-_allowed_origins.update({
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
-})
-flask_cors.CORS(app, resources={r'/api/*': {'origins': list(_allowed_origins)}})
+flask_cors.CORS(app, resources={r'/api/*': {'origins': FRONTEND_URL}})
 
 # JWT Configuration
 app.config['JWT_SECRET_KEY'] = APP_SECRET_KEY
@@ -139,10 +129,6 @@ def logoutcas():
 # API routes:
 #-----------------------------------------------------------------------
 
-@app.route('/api/health', methods=['GET'])
-def health():
-    return flask.jsonify({'status': 'ok'}), 200
-
 @app.route('/api/gettokens', methods=['GET'])
 def get_tokens():
     nonce = flask.request.args.get('nonce')
@@ -196,65 +182,6 @@ def model_to_dict(model):
 
 @app.route("/api/posts", methods=["GET"])
 def list_posts():
-<<<<<<< HEAD
-    """Get merged user-created posts + AI-parsed posts (20 newest total)."""
-    try:
-        # ---- 1. USER POSTS ----
-        user_posts = database.get_all_posts(limit=None, order_by='post_time', order_desc=True)
-        user_posts_dict = []
-
-        for post in user_posts:
-            entry = model_to_dict(post)
-
-            # enrich fields
-            try:
-                club_obj = database.get_club_by_id(entry.get('club_id'))
-                entry['club_name'] = getattr(club_obj, 'club_name', None)
-            except:
-                entry['club_name'] = None
-
-            try:
-                officer_obj = database.get_officer_by_id(entry.get('officer_id'))
-                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
-            except:
-                entry['officer_name'] = None
-
-            entry['timestamp'] = entry.get('post_time')
-            entry['source'] = "user"   # <-- FLAG FOR FRONTEND
-
-            user_posts_dict.append(entry)
-
-        # ---- 2. PARSED POSTS ----
-        parsed_posts = database.get_all_parsed_posts()
-        parsed_posts_dict = []
-
-        for p in parsed_posts:
-            d = model_to_dict(p)
-
-            parsed_posts_dict.append({
-                "post_id": f"parsed-{d['parsed_id']}",  # ensure unique IDs for frontend
-                "post_title": d.get("post_title"),
-                "club_name": d.get("club_name"),
-                "officer_name": d.get("officer_name", "tigertunity-bot"),
-                "post_content": d.get("post_content"),
-                "post_type": d.get("post_type"),
-                "timestamp": d.get("created_at"),
-                "edit_status": False,
-                "source": "parsed"
-            })
-
-        # ---- 3. MERGE & SORT ----
-        merged = user_posts_dict + parsed_posts_dict
-        merged_sorted = sorted(
-            merged,
-            key=lambda x: x["timestamp"] or datetime.datetime.min,
-            reverse=True
-        )
-
-        # LIMIT TO 20 NEWEST POSTS
-        return flask.jsonify(merged_sorted[:20])
-
-=======
     """Get all posts, limited to 50 most recent"""
     try:
         posts = database.get_all_posts(limit=50, order_by='post_time', order_desc=True)
@@ -273,10 +200,97 @@ def list_posts():
             posts_dict[i]['officer_name'] = officer_name
             posts_dict[i]['officer_display_name'] = officer_display_name
             posts_dict[i]['timestamp'] = post.get('post_time')
-        return flask.jsonify(posts_dict)
->>>>>>> origin/main
+        
+        parsed_posts = database.get_all_parsed_posts()
+        parsed_posts_dict = []
+
+        for p in parsed_posts:
+            d = model_to_dict(p)
+            parsed_posts_dict.append({
+                "post_id"      : f"parsed-{d['parsed_id']}",  # string ID for frontend
+                "post_title"   : d.get("post_title"),
+                "club_name"    : d.get("club_name"),
+                "club_type"    : None,  # no structured club mapping (limited feature)
+                "officer_name" : d.get("officer_name", "tigertunity-bot"),
+                "post_content" : d.get("post_content"),
+                "post_type"    : d.get("post_type"),
+                "timestamp"    : d.get("created_at"),
+                "edit_status"  : False,
+                "source"       : "parsed",
+            })
+
+        merged = posts_dict + parsed_posts_dict
+        merged_sorted = sorted(
+            merged,
+            key=lambda x: x["timestamp"] or datetime.datetime.min,
+            reverse=True,
+        )
+
+        return flask.jsonify(merged_sorted[:50])
+    
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+    
+# def list_posts():
+#     """Get merged user-created posts + AI-parsed posts (20 newest total)."""
+#     try:
+#         # ---- 1. USER POSTS ----
+#         user_posts = database.get_all_posts(limit=None, order_by='post_time', order_desc=True)
+#         user_posts_dict = []
+
+#         for post in user_posts:
+#             entry = model_to_dict(post)
+
+#             # enrich fields
+#             try:
+#                 club_obj = database.get_club_by_id(entry.get('club_id'))
+#                 entry['club_name'] = getattr(club_obj, 'club_name', None)
+#             except:
+#                 entry['club_name'] = None
+
+#             try:
+#                 officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+#                 entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+#             except:
+#                 entry['officer_name'] = None
+
+#             entry['timestamp'] = entry.get('post_time')
+#             entry['source'] = "user"   # <-- FLAG FOR FRONTEND
+
+#             user_posts_dict.append(entry)
+
+#         # ---- 2. PARSED POSTS ----
+#         parsed_posts = database.get_all_parsed_posts()
+#         parsed_posts_dict = []
+
+#         for p in parsed_posts:
+#             d = model_to_dict(p)
+
+#             parsed_posts_dict.append({
+#                 "post_id": f"parsed-{d['parsed_id']}",  # ensure unique IDs for frontend
+#                 "post_title": d.get("post_title"),
+#                 "club_name": d.get("club_name"),
+#                 "officer_name": d.get("officer_name", "tigertunity-bot"),
+#                 "post_content": d.get("post_content"),
+#                 "post_type": d.get("post_type"),
+#                 "timestamp": d.get("created_at"),
+#                 "edit_status": False,
+#                 "source": "parsed"
+#             })
+
+#         # ---- 3. MERGE & SORT ----
+#         merged = user_posts_dict + parsed_posts_dict
+#         merged_sorted = sorted(
+#             merged,
+#             key=lambda x: x["timestamp"] or datetime.datetime.min,
+#             reverse=True
+#         )
+
+#         # LIMIT TO 20 NEWEST POSTS
+#         return flask.jsonify(merged_sorted[:20])
+
+#     except Exception as e:
+#         return flask.jsonify({'error': str(e)}), 500
 
 
 #-----------------------------------------------------------------------
@@ -293,7 +307,6 @@ def list_posts_by_club(club_id):
             posts_dict[i]['club_name'] = getattr(club, 'club_name', None) if club else None
             posts_dict[i]['club_type'] = getattr(club, 'club_type', None) if club else None
             posts_dict[i]['officer_name'] = getattr(officer, 'officer_name', None) if officer else None
-            posts_dict[i]['officer_display_name'] = getattr(officer, 'display_name', None) if officer else None
             posts_dict[i]['timestamp'] = post.get('post_time')
         return flask.jsonify(posts_dict)
     except Exception as e:
@@ -485,11 +498,11 @@ def delete_club(club_id):
 
         current_user = flask_jwt_extended.get_jwt_identity()
         officer = database.get_officer_by_name(current_user)
-        authorized = officer and officer.officer_id in (club.club_officers or [])
-        if not authorized and not UNRESTRICTED_CLUB_DELETE:
+        if officer is None:
             return flask.jsonify({'error': 'Unauthorized'}), 403
-        if not authorized and UNRESTRICTED_CLUB_DELETE:
-            print(f"[UNRESTRICTED_CLUB_DELETE] User '{current_user}' deleting club {club.club_id} without officer authorization")
+
+        if officer.officer_id not in (club.club_officers or []):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
 
         # 1) Delete all posts for this club
         posts = database.get_posts_by_club(club_id)
@@ -513,7 +526,7 @@ def delete_club(club_id):
         # 4) Finally, delete the club
         database.delete_club(club_id)
 
-        return flask.jsonify({'message': 'Club deleted successfully', 'unrestricted': (not authorized and UNRESTRICTED_CLUB_DELETE)})
+        return flask.jsonify({'message': 'Club deleted successfully'})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -580,14 +593,12 @@ def create_post():
             club = database.get_club_by_id(entry.get('club_id'))
             if club is not None:
                 entry['club_name'] = getattr(club, 'club_name', None)
-                entry['club_type'] = getattr(club, 'club_type', None)
         except Exception:
             pass
         try:
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
-                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
 
@@ -620,7 +631,6 @@ def get_post(post_id):
             officer = database.get_officer_by_id(entry.get('officer_id'))
             if officer is not None:
                 entry['officer_name'] = getattr(officer, 'officer_name', None)
-                entry['officer_display_name'] = getattr(officer, 'display_name', None)
         except Exception:
             pass
         entry['timestamp'] = entry.get('post_time')
@@ -631,58 +641,16 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
-@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post.
-    Authorization: user must be an officer of the club that owns the post.
-    """
+    """Update a post"""
     try:
-        # Fetch existing post
-        existing = database.get_post_by_id(post_id)
-        if existing is None:
+        data = flask.request.get_json()
+        post = database.update_post(post_id, **data)
+        if post is None:
             return flask.jsonify({'error': 'Post not found'}), 404
-
-        # Determine club and auth context
-        club = database.get_club_by_id(existing.club_id)
-        if club is None:
-            return flask.jsonify({'error': 'Club not found for post'}), 404
-
-        current_user = flask_jwt_extended.get_jwt_identity()
-        officer = database.get_officer_by_name(current_user)
-        if officer is None:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        if officer.officer_id not in (club.club_officers or []):
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        # Apply updates
-        data = flask.request.get_json() or {}
-        updated = database.update_post(post_id, **data)
-        if updated is None:
-            return flask.jsonify({'error': 'Failed to update'}), 500
-
-        entry = model_to_dict(updated)
-        # Enrich response similar to list endpoints
-        try:
-            club_obj = database.get_club_by_id(entry.get('club_id'))
-            if club_obj is not None:
-                entry['club_name'] = getattr(club_obj, 'club_name', None)
-                entry['club_type'] = getattr(club_obj, 'club_type', None)
-        except Exception:
-            pass
-        try:
-            officer_obj = database.get_officer_by_id(entry.get('officer_id'))
-            if officer_obj is not None:
-                entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
-                entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
-        except Exception:
-            pass
-        entry['timestamp'] = entry.get('post_time')
-
         return flask.jsonify({
             'message': 'Post updated successfully',
-            'entry': entry,
-            'editable': True  # Confirms caller had edit rights
+            'entry': model_to_dict(post)
         })
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -800,12 +768,19 @@ def zapier_ingest():
     try:
         data = flask.request.get_json()
 
-        post_title = data.get("post_title")
-        club_name = data.get("club_name")
-        officer_name = data.get("officer_name", "tigertunity-bot")
-        post_content = data.get("post_content")
-        post_type = data.get("post_type")
+        post_title   = (data.get("post_title") or "").strip()
+        club_name    = (data.get("club_name") or "").strip()
+        officer_name = (data.get("officer_name") or "tigertunity-bot").strip() or "tigertunity-bot"
+        post_content = (data.get("post_content") or "").strip()
+        post_type    = (data.get("post_type") or "").strip() or "announcement"
 
+
+        if not post_title or not club_name or not post_content:
+            return flask.jsonify({
+                "success": False,
+                "error": "post_title, club_name, and post_content are required"
+            }), 400
+        
         # store in parsed_posts table
         row = database.create_parsed_post(
             post_title=post_title,
@@ -815,7 +790,10 @@ def zapier_ingest():
             post_type=post_type
         )
 
-        return flask.jsonify({"success": True, "parsed_id": row.parsed_id})
+        return flask.jsonify({
+            "success": True, 
+            "parsed_id": row.parsed_id
+        })
 
     except Exception as e:
         return flask.jsonify({"error": str(e)}), 500
@@ -898,142 +876,6 @@ def unsave_post_from_officer(officer_name, post_id):
         return flask.jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/officers/<string:officer_name>/notepad', methods=['GET'])
-@flask_jwt_extended.jwt_required()
-def get_officer_notepad(officer_name):
-    """Get notepad for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            return flask.jsonify({'notepad': ''})
-
-        return flask.jsonify({'notepad': officer.notepad or ''})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-
-@app.route('/api/officers/<string:officer_name>/notepad', methods=['PUT'])
-@flask_jwt_extended.jwt_required()
-def update_officer_notepad(officer_name):
-    """Update notepad for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        data = flask.request.get_json() or {}
-        notepad = data.get('notepad', '')
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            # Create officer if doesn't exist
-            officer = database.create_officer(
-                officer_name=officer_name,
-                saved_posts=[],
-                saved_clubs=[],
-                officer_clubs=[],
-                associated_posts=[]
-            )
-
-        database.update_officer(officer.officer_id, notepad=notepad)
-        return flask.jsonify({'message': 'Notepad updated successfully', 'notepad': notepad})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-
-@app.route('/api/officers/<string:officer_name>/preferences', methods=['GET'])
-@flask_jwt_extended.jwt_required()
-def get_officer_preferences(officer_name):
-    """Get saved post type preferences for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            return flask.jsonify({'preferences': []})
-
-        prefs = getattr(officer, 'preferences', []) or []
-        return flask.jsonify({'preferences': prefs})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-
-@app.route('/api/officers/<string:officer_name>/preferences', methods=['PUT'])
-@flask_jwt_extended.jwt_required()
-def update_officer_preferences(officer_name):
-    """Update saved post type preferences for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        data = flask.request.get_json() or {}
-        preferences = data.get('preferences') or []
-        if not isinstance(preferences, list):
-            return flask.jsonify({'error': 'preferences must be a list of strings'}), 400
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            officer = database.create_officer(
-                officer_name=officer_name,
-                saved_posts=[],
-                saved_clubs=[],
-                officer_clubs=[],
-                associated_posts=[]
-            )
-
-        database.update_officer(officer.officer_id, preferences=preferences)
-        return flask.jsonify({'message': 'Preferences updated successfully', 'preferences': preferences})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-@app.route('/api/officers/<string:officer_name>/display-name', methods=['GET'])
-@flask_jwt_extended.jwt_required()
-def get_officer_display_name(officer_name):
-    """Get display_name for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            return flask.jsonify({'display_name': ''})
-
-        return flask.jsonify({'display_name': officer.display_name or ''})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-
-@app.route('/api/officers/<string:officer_name>/display-name', methods=['PUT'])
-@flask_jwt_extended.jwt_required()
-def update_officer_display_name(officer_name):
-    """Update display_name for an officer"""
-    try:
-        current_user = flask_jwt_extended.get_jwt_identity()
-        if current_user != officer_name:
-            return flask.jsonify({'error': 'Unauthorized'}), 403
-
-        data = flask.request.get_json() or {}
-        display_name = data.get('display_name', '')
-
-        officer = database.get_officer_by_name(officer_name)
-        if officer is None:
-            # Create officer if doesn't exist
-            officer = database.create_officer(
-                officer_name=officer_name,
-                saved_posts=[],
-                saved_clubs=[],
-                officer_clubs=[],
-                associated_posts=[]
-            )
-
-        database.update_officer(officer.officer_id, display_name=display_name)
-        return flask.jsonify({'message': 'Display name updated successfully', 'display_name': display_name})
-    except Exception as e:
-        return flask.jsonify({'error': str(e)}), 500
-
 @app.route('/api/officers/<string:officer_name>/saved-posts', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_saved_posts_for_officer(officer_name):
@@ -1065,7 +907,6 @@ def get_saved_posts_for_officer(officer_name):
                 officer_obj = database.get_officer_by_id(entry.get('officer_id'))
                 if officer_obj is not None:
                     entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
-                    entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
             except Exception:
                 pass
             entry['timestamp'] = entry.get('post_time')

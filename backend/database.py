@@ -20,7 +20,7 @@ class Post(Base):
     post_id = Column(Integer, primary_key=True, autoincrement=True)
     post_title = Column(Text, nullable=False)
     club_id = Column(Integer, ForeignKey("club_table.club_id"), nullable=False)
-    officer_id = Column(Integer, ForeignKey("officer_table.officer_id"), nullable=False)
+    officer_id = Column(Integer, ForeignKey("members_table.user_id"), nullable=False)
     post_content = Column(Text, nullable=False)
     post_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     post_type = Column(Text, nullable=False)

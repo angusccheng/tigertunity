@@ -13,7 +13,6 @@ export default function FeedPage() {
   const [posts, setPosts] = useState([]);
   const [myClubs, setMyClubs] = useState([]);
   const [clubSessionExpired, setClubSessionExpired] = useState(false);
-  const [selected, setSelected] = useState(null); // read modal
   const [composerOpen, setComposerOpen] = useState(false); // create overlay
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
@@ -42,9 +41,6 @@ export default function FeedPage() {
   const [preferences, setPreferences] = useState(new Set());
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
-  // Edit state
-  const [editingPost, setEditingPost] = useState(null);
-  const [editForm, setEditForm] = useState({});
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -125,10 +121,10 @@ export default function FeedPage() {
 
   // Lock scroll when any modal is open
   useEffect(() => {
-    if (selected || composerOpen) document.body.classList.add("overflow-hidden");
+    if (composerOpen) document.body.classList.add("overflow-hidden");
     else document.body.classList.remove("overflow-hidden");
     return () => document.body.classList.remove("overflow-hidden");
-  }, [selected, composerOpen]);
+  }, [composerOpen]);
 
   function validate(f) {
     const e = {};
@@ -195,33 +191,18 @@ export default function FeedPage() {
     try {
       await deletePost(post.post_id);
       setPosts((prev) => prev.filter((p) => p.post_id !== post.post_id));
-      setSelected(null);
     } catch (err) {
       console.error("Error deleting post:", err);
     }
   };
 
-  const handleEditClick = (post) => {
-    setEditingPost(post);
-    setEditForm({
-      post_title: post.post_title,
-      club_name: post.club_name,
-      post_content: post.post_content,
-      post_type: post.post_type,
-    });
-    setSelected(null);
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
+  const handleUpdatePost = async (postId, editForm) => {
     setSubmitting(true);
     try {
-      const updated = await updatePost(editingPost.post_id, editForm);
+      const updated = await updatePost(postId, editForm);
       setPosts((prev) =>
-        prev.map((p) => (p.post_id === editingPost.post_id ? { ...p, ...updated } : p))
+        prev.map((p) => (p.post_id === postId ? { ...p, ...updated } : p))
       );
-      setEditingPost(null);
-      setEditForm({});
     } catch (err) {
       console.error("Error updating post:", err);
     } finally {
@@ -632,12 +613,15 @@ export default function FeedPage() {
               <PostCard
                 key={p.post_id}
                 post={p}
-                onClick={() => setSelected(p)}
                 onSaveToggle={(e) => savedPosts.has(p.post_id)
                   ? handleUnsavePost(p.post_id, e)
                   : handleSavePost(p.post_id, e)}
                 isSaved={savedPosts.has(p.post_id)}
                 showSaveButton={!!user}
+                myClubs={myClubs}
+                onDelete={handleDelete}
+                onUpdatePost={handleUpdatePost}
+                submitting={submitting}
               />
             ))
           )}
@@ -813,209 +797,6 @@ export default function FeedPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
-      {editingPost && (
-        <div id="edit-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
-          <div className={styles.modalBackdrop} onClick={() => setEditingPost(null)} />
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Edit Post</h2>
-              <button
-                type="button"
-                onClick={() => setEditingPost(null)}
-                className={styles.closeButton}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form className={styles.form} onSubmit={handleEditSubmit}>
-              <div className={styles.formFieldFull}>
-                <label className={styles.formLabel}>Post Title</label>
-                <input
-                  className={styles.formInput}
-                  value={editForm.post_title}
-                  onChange={(e) => setEditForm({ ...editForm, post_title: e.target.value })}
-                  placeholder="e.g., Robotics Club Call for Members"
-                />
-              </div>
-
-              <div>
-                <label className={styles.formLabel}>Club Name</label>
-                <select
-                  className={styles.formSelect}
-                  value={editForm.club_name}
-                  onChange={(e) => setEditForm({ ...editForm, club_name: e.target.value })}
-                  disabled={myClubs.length === 0}
-                >
-                  {myClubs.map((c) => (
-                    <option key={c.club_id} value={c.club_name}>{c.club_name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={styles.formLabel}>Post Type</label>
-                <select
-                  className={styles.formSelect}
-                  value={editForm.post_type}
-                  onChange={(e) => setEditForm({ ...editForm, post_type: e.target.value })}
-                >
-                  {POST_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.formFieldFull}>
-                <label className={styles.formLabel}>Post Content</label>
-                <textarea
-                  rows={4}
-                  className={styles.formTextarea}
-                  value={editForm.post_content}
-                  onChange={(e) => setEditForm({ ...editForm, post_content: e.target.value })}
-                  placeholder="Add event details, dates, links, etc."
-                />
-              </div>
-
-              <div className={styles.formActions}>
-                <button
-                  type="button"
-                  onClick={() => setEditingPost(null)}
-                  className={styles.cancelButton}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={styles.submitButton}
-                >
-                  {submitting ? "Updating…" : "Update Post"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Read Modal */}
-      {selected && (
-        <div id="post-modal" role="dialog" aria-modal="true" className={styles.modalOverlay}>
-          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
-          <div className={styles.readModalContent}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className={styles.closeButton}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className={styles.readModalGrid}>
-              <div className={styles.readModalMain}>
-                <div className={styles.readModalMeta}>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                      selected.officer_display_name 
-                        ? `${selected.officer_display_name} (${selected.officer_name})`
-                        : selected.officer_name
-                    }</span>
-                  </p>
-                </div>
-                <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString([], {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",  // <-- no seconds
-                  }) : ""}
-                </p>
-                {selected.edit_status && selected.edit_time && (
-                  <p className={styles.readModalDate}>
-                    Edited: {new Date(selected.edit_time).toLocaleString([], {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",  // <-- no seconds
-                    })}
-                  </p>
-                )}
-                {selected.post_type === "Event" && (selected.event_starttime || selected.event_endtime) && (
-                  <p className={styles.readModalDate}>
-                    <strong>Event Time: </strong>
-                    {selected.event_starttime
-                      ? new Date(selected.event_starttime).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                      : "?"}
-                    {selected.event_endtime
-                      ? " – " + new Date(selected.event_endtime).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                      : ""}
-                  </p>
-                )}
-                <p className={styles.readModalContentText}>{selected.post_content}</p>
-              </div>
-
-              <aside className={styles.readModalSidebar}>
-                <div className={styles.readModalType}>
-                  <p>Type:</p>
-                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
-                </div>
-                <div className={styles.readModalActions}>
-                  {(() => {
-                    const officerClubNames = new Set(myClubs.map(c => (c.club_name || '').toLowerCase()));
-                    const canModify = selected.club_name && officerClubNames.has(selected.club_name.toLowerCase());
-                    return (
-                      <>
-                        {canModify && (
-                          <button
-                            type="button"
-                            onClick={() => handleEditClick(selected)}
-                            className={styles.editButton}
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {canModify && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(selected)}
-                            className={styles.deleteButton}
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </aside>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -5,10 +5,13 @@ import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayN
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
 import { fetchAdminClubRequests, approveClubRequest, rejectClubRequest } from "../features/adminApi.js";
+import { fetchConversations, fetchUsers } from "../features/dmApi.js"; // ---------------------------- // DM API imports
+import DMMessenger from "../components/DMMessenger.jsx";
 
 export default function ProfilePage() {
   const user = getUser();
-  const [sortBy, setSortBy] = useState("post-date"); // "post-date" or "event-date"
+
+  // Saved posts
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
@@ -25,6 +28,17 @@ export default function ProfilePage() {
   const [adminLoading, setAdminLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
+  // DM Inbox
+  const [conversations, setConversations] = useState([]);
+  const [activeDM, setActiveDM] = useState(null);
+
+  // User picker modal
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [userList, setUserList] = useState([]);
+
+  // ----------------------------
+  // Load saved posts
+  // ----------------------------
   useEffect(() => {
     async function loadSavedPosts() {
       if (!user) {
@@ -133,13 +147,52 @@ export default function ProfilePage() {
     loadAdminRequests();
   }, [user]);
 
-  async function handleUnsavePost(postId, e) {
-    e.stopPropagation(); // Prevent opening the post modal
+  // ----------------------------
+  // Load DM conversations (updated to use dmApi.js)
+  // ----------------------------
+  useEffect(() => {
     if (!user) return;
+
+    async function loadConvos() {
+      try {
+        const data = await fetchConversations(); // ✔ replaced old fetch with authenticated DM API
+        setConversations(data);
+      } catch (err) {
+        console.error("Failed to load DM list:", err);
+      }
+    }
+
+    loadConvos();
+  }, [user]);
+
+  // ----------------------------
+  // Load list of all users (updated to use dmApi.js)
+  // ----------------------------
+  useEffect(() => {
+    if (!showUserPicker) return;
+
+    async function loadUsers() {
+      try {
+        const data = await fetchUsers(); // ✔ replaced old fetch with authenticated DM API
+        setUserList(data);
+      } catch (err) {
+        console.error("Failed to load user list:", err);
+      }
+    }
+
+    loadUsers();
+  }, [showUserPicker]);
+
+  // ----------------------------
+  // Unsave a post
+  // ----------------------------
+  async function handleUnsavePost(postId, e) {
+    e.stopPropagation();
+    if (!user) return;
+
     try {
       await unsavePost(user, postId);
-      // Remove from local state
-      setSavedPosts(prev => prev.filter(p => p.post_id !== postId));
+      setSavedPosts((prev) => prev.filter((p) => p.post_id !== postId));
     } catch (err) {
       console.error(err);
     }
@@ -182,14 +235,15 @@ export default function ProfilePage() {
       <Header />
 
       <main className={styles.mainContent}>
-        {/* Page Title */}
         <h1 className={styles.pageTitle}>Profile</h1>
 
         <div className={styles.grid}>
-          {/* Left Column - Profile Info */}
+
+          {/* LEFT COLUMN */}
           <div className={styles.profileColumn}>
-            {/* User Profile Section */}
             <div className={styles.profileCard}>
+
+              {/* PROFILE HEADER */}
               <div className={styles.profileHeader}>
                 {/* User Info */}
                 <div className={styles.profileInfo}>
@@ -347,20 +401,59 @@ export default function ProfilePage() {
                   )}
                 </div>
               )}
+              {/* DM INBOX */}
+              <div className={styles.dmInboxCard}>
+                <div className={styles.dmInboxHeader}>
+                  <h3 className={styles.dmInboxTitle}>Messages</h3>
+
+                  <button
+                    className={styles.newDMButton}
+                    onClick={() => setShowUserPicker(true)}
+                  >
+                    + New DM
+                  </button>
+                </div>
+
+                {conversations.length === 0 ? (
+                  <p className={styles.emptyText}>
+                    No conversations yet — start a DM!
+                  </p>
+                ) : (
+                  <div className={styles.dmList}>
+                    {conversations.map((c) => (
+                      <button
+                        key={c.conversation_id}
+                        className={styles.dmItem}
+                        onClick={() => setActiveDM(c.other_user)}
+                      >
+                        <div className={styles.dmAvatar} />
+                        <div className={styles.dmTextBlock}>
+                          <p className={styles.dmName}>{c.other_user}</p>
+                          <p className={styles.dmPreview}>
+                            {c.last_message || "No messages yet"}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 
-          {/* Right Column - Saved Posts */}
+          {/* RIGHT COLUMN – SAVED POSTS */}
           <div className={styles.savedEventsColumn}>
             <div className={styles.savedEventsCard}>
               <h2 className={styles.savedEventsTitle}>Saved Posts</h2>
 
-              {/* Event List */}
               <div className={styles.eventsList}>
                 {loading ? (
                   <p className={styles.loadingText}>Loading...</p>
                 ) : savedPosts.length === 0 ? (
-                  <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
+                  <p className={styles.emptyText}>
+                    No saved posts yet. Save posts from the feed!
+                  </p>
                 ) : (
                   savedPosts.map((post) => (
                     <PostCard
@@ -376,50 +469,54 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
         </div>
       </main>
 
-      {selected && (
+      {/* DM POPUP WINDOW */}
+      {activeDM && (
+        <DMMessenger
+          otherUser={activeDM}
+          onClose={() => setActiveDM(null)}
+        />
+      )}
+
+      {/* USER PICKER MODAL */}
+      {showUserPicker && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
-          <div className={styles.readModalContent}>
+          <div
+            className={styles.modalBackdrop}
+            onClick={() => setShowUserPicker(false)}
+          />
+          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
+              <h2 className={styles.modalTitle}>Select a user to DM</h2>
               <button
                 type="button"
-                onClick={() => setSelected(null)}
+                onClick={() => setShowUserPicker(false)}
                 className={styles.closeButton}
               >
                 ✕
               </button>
             </div>
-
-            <div className={styles.readModalGrid}>
-              <div className={styles.readModalMain}>
-                <div className={styles.readModalMeta}>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                      selected.officer_display_name
-                        ? `${selected.officer_display_name} (${selected.officer_name})`
-                        : selected.officer_name
-                    }</span>
-                  </p>
-                </div>
-                <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
-                </p>
-                <p className={styles.readModalContentText}>{selected.post_description || selected.post_content || ""}</p>
-              </div>
-
-              <aside className={styles.readModalSidebar}>
-                <div className={styles.readModalType}>
-                  <p>Type:</p>
-                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
-                </div>
-              </aside>
+            <div className={styles.userPicker}>
+              {userList.length === 0 ? (
+                <p>Loading…</p>
+              ) : (
+                userList.map((u) => (
+                  <button
+                    key={u}
+                    className={styles.userRow}
+                    onClick={() => {
+                      setActiveDM(u);
+                      setShowUserPicker(false);
+                    }}
+                  >
+                    <div className={styles.dmAvatarSmall} />
+                    {u}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>

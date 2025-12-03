@@ -1,7 +1,9 @@
 import os
+import dotenv
+import sqlalchemy
+
 from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, func, ForeignKey, TIMESTAMP
 import sqlalchemy.orm
-import dotenv
 
 #-----------------------------------------------------------------------
 
@@ -48,9 +50,6 @@ class Club(Base):
     club_type = Column(Text, nullable=False)
     club_filters = Column(ARRAY(Text), default=[])
     club_officers = Column(ARRAY(Integer), default=[])
-    president = Column(Integer, ForeignKey("members_table.user_id"))
-    vice_president = Column(Integer, ForeignKey("members_table.user_id"))
-    treasurer = Column(Integer, ForeignKey("members_table.user_id"))
     
 class ClubRequest(Base):
     __tablename__ = "club_requests"
@@ -65,7 +64,30 @@ class Nonce(Base):
     nonce = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
     username = sqlalchemy.Column(sqlalchemy.String)
 
+
+# ---------------- DM TABLES -----------------
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user1 = Column(Text, nullable=False)
+    user2 = Column(Text, nullable=False)
+    last_updated = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class DMMessage(Base):
+    __tablename__ = "dm_messages"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
+    sender = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
+    timestamp = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
 _engine = sqlalchemy.create_engine(_database_url)
+
+# Create DM tables if they don't exist (safe for existing tables)
+Base.metadata.create_all(_engine)
 
 #-----------------------------------------------------------------------
 # Nonce operations
@@ -363,8 +385,7 @@ def get_all_clubs():
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(Club).all()
 
-def create_club(club_name, club_profile="", club_type="", club_filters=None, club_officers=None,
-                president=None, vice_president=None, treasurer=None):
+def create_club(club_name, club_profile="", club_type="", club_filters=None, club_officers=None):
     """Create a new club"""
     with sqlalchemy.orm.Session(_engine) as session:
         club = Club(
@@ -372,10 +393,7 @@ def create_club(club_name, club_profile="", club_type="", club_filters=None, clu
             club_profile=club_profile,
             club_type=club_type,
             club_filters=club_filters or [],
-            club_officers=club_officers or [],
-            president=president,
-            vice_president=vice_president,
-            treasurer=treasurer
+            club_officers=club_officers or []
         )
         session.add(club)
         session.commit()

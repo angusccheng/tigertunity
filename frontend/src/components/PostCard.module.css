@@ -89,8 +89,6 @@
     transition: all 0.2s;
     z-index: 1;
     padding: 0;
-    padding-bottom: 0.15rem;
-    padding-left: 0.02rem;
 }
 
 .saveButton:hover {

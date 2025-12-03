@@ -56,14 +56,6 @@
   gap: 1rem;
 }
 
-.profileAvatar {
-  height: 6rem;
-  width: 6rem;
-  border-radius: 9999px;
-  background: #e5e5e5;
-  flex-shrink: 0;
-}
-
 .profileInfo {
   flex: 1 1 0%;
   display: flex;
@@ -107,18 +99,6 @@
 
 .profileInput::placeholder {
   color: #a3a3a3;
-}
-
-.profileName {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #171717;
-}
-
-.profileClass {
-  margin-top: 0.25rem;
-  font-size: 1rem;
-  color: #404040;
 }
 
 .bioSection {
@@ -243,121 +223,10 @@
   color: #171717;
 }
 
-.sortButtons {
-  margin-bottom: 1rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.sortButton {
-  flex: 1 1 0%;
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: background-color 0.2s, color 0.2s;
-  border: 1px solid #d4d4d4;
-  background: white;
-  color: #404040;
-  cursor: pointer;
-}
-
-.sortButtonActive {
-  background: #ff9000;
-  color: white;
-  border-color: #ff9000;
-}
-
-.sortButtonInactive:hover {
-  background: #fafafa;
-}
-
 .eventsList {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.eventItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e5e5;
-  background: #fafafa;
-  padding: 0.75rem;
-  transition: border-color 0.2s;
-  gap: 0.5rem;
-}
-
-.eventItem:hover {
-  border-color: #d4d4d4;
-}
-
-.eventButton {
-  flex: 1 1 0%;
-  min-width: 0;
-  cursor: pointer;
-  background: none;
-  border: none;
-  text-align: left;
-  padding: 0;
-}
-
-.saveButton {
-  font-size: 1.5rem;
-  color: #ff9000;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  line-height: 1;
-  transition: transform 0.2s;
-  flex-shrink: 0;
-}
-
-.saveButton:hover {
-  transform: scale(1.2);
-}
-
-.eventContent {
-  flex: 1 1 0%;
-  min-width: 0;
-}
-
-.eventLabel {
-  font-size: 0.75rem;
-  color: #525252;
-}
-
-.eventSubject {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #171717;
-}
-
-.eventText {
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  color: #404040;
-}
-
-.expandButton {
-  margin-left: 0.5rem;
-  flex-shrink: 0;
-  color: #a3a3a3;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.expandButton:hover {
-  color: #525252;
-}
-
-.expandIcon {
-  height: 1.25rem;
-  width: 1.25rem;
 }
 
 .loadingText {
@@ -498,22 +367,6 @@
   font-size: 0.875rem;
   background: none;
   cursor: pointer;
-}
-
-.readMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  color: #525252;
-}
-
-.readDescription {
-  font-size: 0.875rem;
-  line-height: 1.5rem;
-  color: #404040;
-  white-space: pre-wrap;
 }
 
 /* Modal Notes (Club Request) */
@@ -657,12 +510,6 @@
   background: #dc2626;
   border-color: #dc2626;
   transform: translateY(-1px);
-}
-.chatContainer {
-    background: #E5E5E5;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 /* DM Inbox styles */

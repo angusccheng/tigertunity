@@ -77,19 +77,6 @@
   margin-bottom: 2rem;
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sectionTitle {
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ff9000;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -106,13 +93,6 @@
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-}
-
-.clubThumb {
-  height: 7rem;
-  border-radius: 0.5rem;
-  background: #e5e5e5;
-  margin-bottom: 0.5rem;
 }
 
 .addCard {
@@ -307,36 +287,4 @@
 .postsEmpty {
   color: #6b7280;
   font-size: 0.875rem;
-}
-
-.postItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid #e5e5e5;
-  background: white;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-}
-
-.postItemMain {
-  display: grid;
-  gap: 0.125rem;
-  justify-items: start;
-  /* ensure inner elements align left */
-}
-
-.postItemTitle {
-  font-weight: 600;
-  color: #171717;
-  font-size: 0.9rem;
-  text-align: left;
-  /* explicit left alignment */
-}
-
-.postItemMeta {
-  display: flex;
-  gap: 0.5rem;
-  color: #6b7280;
-  font-size: 0.75rem;
 }

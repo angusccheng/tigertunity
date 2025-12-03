@@ -1,7 +1,9 @@
 import os
+import dotenv
+import sqlalchemy
+
 from sqlalchemy import Column, Integer, Text, Boolean, ARRAY, func, ForeignKey, TIMESTAMP
 import sqlalchemy.orm
-import dotenv
 
 #-----------------------------------------------------------------------
 
@@ -20,10 +22,13 @@ class Post(Base):
     club_id = Column(Integer, ForeignKey("club_table.club_id"), nullable=False)
     officer_id = Column(Integer, ForeignKey("officer_table.officer_id"), nullable=False)
     post_content = Column(Text, nullable=False)
-    post_time = Column(TIMESTAMP, server_default=func.now())
+    post_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     post_type = Column(Text, nullable=False)
-    edit_time = Column(TIMESTAMP, server_default=func.now())
+    edit_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     edit_status = Column(Boolean, default=False)
+    event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
+    event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
+    
     
 class User(Base):
     __tablename__ = "user_table"
@@ -55,12 +60,36 @@ class Club(Base):
     vice_president = Column(Integer, ForeignKey("officer_table.officer_id"))
     treasurer = Column(Integer, ForeignKey("officer_table.officer_id"))
     
+
 class Nonce(Base):
     __tablename__ = 'nonces'
     nonce = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
     username = sqlalchemy.Column(sqlalchemy.String)
 
+
+# ---------------- DM TABLES -----------------
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user1 = Column(Text, nullable=False)
+    user2 = Column(Text, nullable=False)
+    last_updated = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class DMMessage(Base):
+    __tablename__ = "dm_messages"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
+    sender = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
+    timestamp = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
 _engine = sqlalchemy.create_engine(_database_url)
+
+# Create DM tables if they don't exist (safe for existing tables)
+Base.metadata.create_all(_engine)
 
 #-----------------------------------------------------------------------
 # Nonce operations
@@ -172,6 +201,11 @@ def remove_saved_club_from_user(user_id, club_id):
         session.commit()
         return True
 
+def get_all_users():
+    """Get all users"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(User).all()
+
 #-----------------------------------------------------------------------
 # Post operations
 #-----------------------------------------------------------------------
@@ -218,7 +252,7 @@ def get_posts_by_type(post_type, limit=None):
             query = query.limit(limit)
         return query.all()
 
-def create_post(post_title, club_id, officer_id, post_content, post_type):
+def create_post(post_title, club_id, officer_id, post_content, post_type, event_starttime=None, event_endtime=None):
     """Create a new post"""
     with sqlalchemy.orm.Session(_engine) as session:
         post = Post(
@@ -226,7 +260,9 @@ def create_post(post_title, club_id, officer_id, post_content, post_type):
             club_id=club_id,
             officer_id=officer_id,
             post_content=post_content,
-            post_type=post_type
+            post_type=post_type,
+            event_starttime=event_starttime,
+            event_endtime=event_endtime
         )
         session.add(post)
         session.commit()
@@ -328,6 +364,17 @@ def add_club_to_officer(officer_id, club_id):
             # Create a new list to trigger SQLAlchemy change detection
             officer.officer_clubs = officer.officer_clubs + [club_id]
         session.commit()
+        return True
+
+def remove_club_from_officer(officer_id, club_id):
+    """Remove a club_id from officer's officer_clubs array"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        officer = session.query(Officer).filter(Officer.officer_id == officer_id).first()
+        if officer is None or officer.officer_clubs is None:
+            return False
+        if club_id in officer.officer_clubs:
+            officer.officer_clubs = [cid for cid in (officer.officer_clubs or []) if cid != club_id]
+            session.commit()
         return True
 
 def add_post_to_officer(officer_id, post_id):
@@ -482,3 +529,103 @@ def remove_officer_from_club(club_id, officer_id):
             club.club_officers.remove(officer_id)
         session.commit()
         return True
+
+#-----------------------------------------------------------------------
+# DM operations
+#-----------------------------------------------------------------------
+
+def get_conversation_by_id(conv_id):
+    """Return a Conversation object by ID."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(Conversation).filter(Conversation.id == conv_id).first()
+
+
+def get_or_create_conversation(user1, user2):
+    """Return Conversation object between user1 and user2, creating it if needed."""
+    a, b = sorted([user1, user2])
+    with sqlalchemy.orm.Session(_engine) as session:
+        convo = (
+            session.query(Conversation)
+            .filter(Conversation.user1 == a, Conversation.user2 == b)
+            .first()
+        )
+        if convo is None:
+            convo = Conversation(user1=a, user2=b)
+            session.add(convo)
+            session.commit()
+            session.refresh(convo)
+        return convo
+
+
+def get_conversations_for_user(username):
+    """
+    Return list of conversation dicts for a user:
+    {
+      "conversation_id": ...,
+      "user1": ...,
+      "user2": ...,
+      "other_user": ...,
+      "last_updated": ...
+    }
+    """
+    with sqlalchemy.orm.Session(_engine) as session:
+        convos = (
+            session.query(Conversation)
+            .filter((Conversation.user1 == username) | (Conversation.user2 == username))
+            .order_by(Conversation.last_updated.desc())
+            .all()
+        )
+
+        result = []
+        for c in convos:
+            other = c.user2 if c.user1 == username else c.user1
+            result.append({
+                "conversation_id": c.id,
+                "user1": c.user1,
+                "user2": c.user2,
+                "other_user": other,
+                "last_updated": c.last_updated,
+            })
+        return result
+
+
+def get_messages_for_conversation(conv_id):
+    """Return list of DM messages (as dicts) for a conversation."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        rows = (
+            session.query(DMMessage)
+            .filter(DMMessage.conversation_id == conv_id)
+            .order_by(DMMessage.timestamp.asc())
+            .all()
+        )
+        return [
+            {
+                "id": m.id,
+                "conversation_id": m.conversation_id,
+                "sender": m.sender,
+                "text": m.text,
+                "timestamp": m.timestamp,
+            }
+            for m in rows
+        ]
+
+
+def add_dm_message(conv_id, sender, text):
+    """Insert new DM message and bump last_updated on conversation."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        msg = DMMessage(conversation_id=conv_id, sender=sender, text=text)
+        session.add(msg)
+
+        convo = session.query(Conversation).filter(Conversation.id == conv_id).first()
+        if convo is not None:
+            convo.last_updated = func.now()
+
+        session.commit()
+        session.refresh(msg)
+        return {
+            "id": msg.id,
+            "conversation_id": msg.conversation_id,
+            "sender": msg.sender,
+            "text": msg.text,
+            "timestamp": msg.timestamp,
+        }

@@ -1,23 +1,21 @@
-// ---------------- Token helpers ----------------
-
 export function saveTokens({ username, access, refresh }) {
   sessionStorage.setItem("tt_user", username);
   sessionStorage.setItem("tt_access", access);
   sessionStorage.setItem("tt_refresh", refresh);
 }
-
 export function clearTokens() {
   console.log("this is clearing tokens");
   ["tt_user", "tt_access", "tt_refresh"].forEach(k => sessionStorage.removeItem(k));
 }
-
-// ---------------- Nonce exchange (login) ----------------
+export function getUser() { return sessionStorage.getItem("tt_user"); }
+export function getAccess() { return sessionStorage.getItem("tt_access"); }
+export function getRefresh() { return sessionStorage.getItem("tt_refresh"); }
 
 export async function exchangeNonceIfPresent() {
   const url = new URL(window.location.href);
   const nonce = url.searchParams.get("nonce");
   if (!nonce) {
-    console.log("No nonce in URL");
+    console.log('No nonce in URL');
     return false;
   }
 
@@ -32,41 +30,25 @@ export async function exchangeNonceIfPresent() {
     if (!r.ok) {
       const text = await r.text();
       console.error("Nonce exchange failed:", r.status, text);
-      alert(
-        `Login failed: ${r.status} ${r.statusText}. Check console for details.`
-      );
+      alert(`Login failed: ${r.status} ${r.statusText}. Check console for details.`);
       return false;
     }
 
     const tokens = await r.json();
-    console.log("Received tokens:", tokens);
+    console.log('Received tokens:', tokens);
 
     // Support both legacy array format [username, access, refresh]
     // and new object format { username, access, refresh }
     let parsed = null;
     if (Array.isArray(tokens) && tokens.length === 3) {
-      parsed = {
-        username: tokens[0],
-        access: tokens[1],
-        refresh: tokens[2],
-      };
-    } else if (
-      tokens &&
-      typeof tokens === "object" &&
-      tokens.username &&
-      tokens.access &&
-      tokens.refresh
-    ) {
-      parsed = {
-        username: tokens.username,
-        access: tokens.access,
-        refresh: tokens.refresh,
-      };
+      parsed = { username: tokens[0], access: tokens[1], refresh: tokens[2] };
+    } else if (tokens && typeof tokens === 'object' && tokens.username && tokens.access && tokens.refresh) {
+      parsed = { username: tokens.username, access: tokens.access, refresh: tokens.refresh };
     }
 
     if (parsed) {
       saveTokens(parsed);
-      console.log("Tokens saved, user:", parsed.username);
+      console.log('Tokens saved, user:', parsed.username);
       url.searchParams.delete("nonce");
       window.history.replaceState({}, "", url.toString());
       return true;
@@ -80,8 +62,6 @@ export async function exchangeNonceIfPresent() {
     return false;
   }
 }
-
-// ---------------- Access token refresh ----------------
 
 export async function refreshAccessIfNeeded() {
   // simple timed refresh every 25 minutes

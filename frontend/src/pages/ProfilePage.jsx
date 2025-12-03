@@ -530,6 +530,7 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+        </div>
       )}
 
       {/* Request Details Modal */}

@@ -39,26 +39,21 @@ export default function DMMessenger({ otherUser, onClose }) {
     return () => clearInterval(interval);
   }, [otherUser, currentUser]);
 
-  // SEND MESSAGE
+  // SEND MESSAGE (no more optimistic double-send flicker)
   async function sendMessage() {
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    // Optimistic update
-    const optimistic = {
-      sender: currentUser,
-      text: trimmed,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, optimistic]);
     setInput("");
 
     try {
+      // 1. Save through API (wait for backend confirmation)
       const saved = await sendDMMessageAPI(otherUser, trimmed);
 
-      // Append saved version (backend returns id, timestamp)
+      // 2. Append ONLY the backend-confirmed message
+      // prevents double-flicker
       setMessages((prev) => [...prev, saved]);
+
     } catch (err) {
       console.error("Failed to send DM:", err);
     }

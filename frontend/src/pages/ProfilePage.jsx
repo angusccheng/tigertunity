@@ -488,48 +488,37 @@ export default function ProfilePage() {
             className={styles.modalBackdrop}
             onClick={() => setShowUserPicker(false)}
           />
-
-            <div className={styles.readModalGrid}>
-              <div className={styles.readModalMain}>
-                <div className={styles.readModalMeta}>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                      selected.officer_display_name
-                        ? `${selected.officer_display_name} (${selected.officer_name})`
-                        : selected.officer_name
-                    }</span>
-                  </p>
-                </div>
-                <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
-                </p>
-                <p className={styles.readModalContentText}>{selected.post_description || selected.post_content || ""}</p>
-              </div>
-          <div className={styles.userPicker}>
-            <h2>Select a user to DM</h2>
-
-            {userList.length === 0 ? (
-              <p>Loading…</p>
-            ) : (
-              userList.map((u) => (
-                <button
-                  key={u}
-                  className={styles.userRow}
-                  onClick={() => {
-                    setActiveDM(u);
-                    setShowUserPicker(false);
-                  }}
-                >
-                  <div className={styles.dmAvatarSmall} />
-                  {u}
-                </button>
-              ))
-            )}
+          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Select a user to DM</h2>
+              <button
+                type="button"
+                onClick={() => setShowUserPicker(false)}
+                className={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+            <div className={styles.userPicker}>
+              {userList.length === 0 ? (
+                <p>Loading…</p>
+              ) : (
+                userList.map((u) => (
+                  <button
+                    key={u}
+                    className={styles.userRow}
+                    onClick={() => {
+                      setActiveDM(u);
+                      setShowUserPicker(false);
+                    }}
+                  >
+                    <div className={styles.dmAvatarSmall} />
+                    {u}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
-        </div>
         </div>
       )}
 

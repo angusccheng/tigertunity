@@ -43,6 +43,7 @@ export default function FeedPage() {
   const [preferences, setPreferences] = useState(new Set());
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
+  const [savedFiltersBeforePrefs, setSavedFiltersBeforePrefs] = useState(null);
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -291,16 +292,9 @@ export default function FeedPage() {
     });
   }
 
-  // Compute effective post filters (apply My Preferences intersection if enabled)
-  const effectivePostFilters = (() => {
-    if (myPrefsEnabled) {
-      if (preferences.size === 0) return new Set();
-      const inter = new Set();
-      activePostFilters.forEach((t) => { if (preferences.has(t)) inter.add(t); });
-      return inter;
-    }
-    return activePostFilters;
-  })();
+  // When preferences mode is enabled, use activePostFilters directly (which now reflects preferences)
+  // No need for separate effectivePostFilters computation
+  const effectivePostFilters = activePostFilters;
 
   // Filter posts based on active filters
   const savedClubNames = new Set(savedClubs.map(c => (c.club_name || '').toLowerCase()));
@@ -447,6 +441,20 @@ export default function FeedPage() {
                     onChange={(e) => {
                       const next = e.target.checked;
                       if (!user || preferences.size === 0) return; // ignore if not available
+                      
+                      if (next) {
+                        // Save current filters before applying preferences
+                        setSavedFiltersBeforePrefs(new Set(activePostFilters));
+                        // Apply preferences to active filters
+                        setActivePostFilters(new Set(preferences));
+                      } else {
+                        // Restore previous filters
+                        if (savedFiltersBeforePrefs) {
+                          setActivePostFilters(savedFiltersBeforePrefs);
+                          setSavedFiltersBeforePrefs(null);
+                        }
+                      }
+                      
                       setMyPrefsEnabled(next);
                     }}
                     disabled={!user || preferences.size === 0}

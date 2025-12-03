@@ -3,9 +3,10 @@ import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
+import PostCard from "../components/PostCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub } from "../features/clubsApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub } from "../features/clubsApi.js";
 import { fetchPostsByClub } from "../features/postApi.js";
 
 export default function ExploreClubsPage() {
@@ -24,6 +25,11 @@ export default function ExploreClubsPage() {
   const [clubPosts, setClubPosts] = useState([]);
   const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [requesting, setRequesting] = useState(false);
+  const [requestNotes, setRequestNotes] = useState("");
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [myRequests, setMyRequests] = useState([]);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   // Search state
@@ -38,7 +44,7 @@ export default function ExploreClubsPage() {
 
   useEffect(() => {
     (async () => {
-      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
       setAllClubs(all);
       // Capture any dynamic club types not in the static list and add them to active filters
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
@@ -52,6 +58,7 @@ export default function ExploreClubsPage() {
         setSessionExpired(false);
         setMyClubs(mineRaw || []);
       }
+      setMyRequests(Array.isArray(myReqs) ? myReqs : []);
     })();
   }, []);
 
@@ -91,7 +98,7 @@ export default function ExploreClubsPage() {
     setClubPostsLoading(false);
     setSelectedPost(null);
     if (lastOpenerRef.current) {
-      try { lastOpenerRef.current.focus(); } catch {}
+      try { lastOpenerRef.current.focus(); } catch { }
     }
   }
 
@@ -200,6 +207,33 @@ export default function ExploreClubsPage() {
     }
   }
 
+  async function onLeaveClub(c, e) {
+    if (e) e.stopPropagation();
+    const name = c.club_name || 'this club';
+    const ok = window.confirm(`Leave "${name}" as an officer? You will lose officer access to this club.`);
+    if (!ok) return;
+    try {
+      console.log('leaving club');
+      const output = await leaveClub(c.club_id);
+      console.log(output);
+      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      setAllClubs(all);
+      if (mineRaw && mineRaw._unauthorized) {
+        setSessionExpired(true);
+        setMyClubs([]);
+      } else {
+        setSessionExpired(false);
+        setMyClubs(mineRaw || []);
+      }
+      if (selectedClub && selectedClub.club_id === c.club_id) {
+        handleCloseDetails();
+      }
+    } catch (err) {
+      console.error('Failed to leave club:', err);
+      alert(`Failed to leave club: ${err.message}`);
+    }
+  }
+
   function handleEditClick(club) {
     setEditingClub(club);
     setEditForm({
@@ -223,7 +257,7 @@ export default function ExploreClubsPage() {
     if (!c.club_type) return true;
     // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
     const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
-    
+
     // Check search query (case-insensitive, partial matching across searchable fields)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -233,12 +267,12 @@ export default function ExploreClubsPage() {
         c.club_type,
         ...(c.officer_names || [])
       ];
-      const matchesSearch = searchableFields.some(field => 
+      const matchesSearch = searchableFields.some(field =>
         field && field.toString().toLowerCase().includes(query)
       );
       return matchesType && matchesSearch;
     }
-    
+
     return matchesType;
   }).sort((a, b) => {
     if (sortMode === 'alphabetical') {
@@ -251,7 +285,7 @@ export default function ExploreClubsPage() {
   const displayAllClubs = allClubs.filter(c => {
     if (!c.club_type) return true;
     const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
-    
+
     // Check search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -261,12 +295,12 @@ export default function ExploreClubsPage() {
         c.club_type,
         ...(c.officer_names || [])
       ];
-      const matchesSearch = searchableFields.some(field => 
+      const matchesSearch = searchableFields.some(field =>
         field && field.toString().toLowerCase().includes(query)
       );
       return matchesType && matchesSearch;
     }
-    
+
     return matchesType;
   }).sort((a, b) => {
     if (sortMode === 'alphabetical') {
@@ -283,7 +317,7 @@ export default function ExploreClubsPage() {
 
   async function refreshClubs() {
     try {
-      const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
+      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
       setAllClubs(all);
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
       if (dynamicTypes.length) {
@@ -296,6 +330,7 @@ export default function ExploreClubsPage() {
         setSessionExpired(false);
         setMyClubs(mineRaw || []);
       }
+      setMyRequests(Array.isArray(myReqs) ? myReqs : []);
     } catch (e) {
       console.error('Failed to refresh clubs', e);
     }
@@ -365,16 +400,16 @@ export default function ExploreClubsPage() {
         {/* Club Type Filters with Sort Controls */}
         <div className={styles.typeFiltersBar} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {allFilterTypes.map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => toggleClubTypeFilter(t)}
-              className={activeClubTypeFilters.has(t) ? `${styles.typeFilter} ${styles.typeFilterActive}` : `${styles.typeFilter} ${styles.typeFilterInactive}`}
-            >
-              {t}
-            </button>
-          ))}
+            {allFilterTypes.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleClubTypeFilter(t)}
+                className={activeClubTypeFilters.has(t) ? `${styles.typeFilter} ${styles.typeFilterActive}` : `${styles.typeFilter} ${styles.typeFilterInactive}`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
@@ -437,8 +472,8 @@ export default function ExploreClubsPage() {
 
         {tab === "mine" ? (
           <section className={styles.section}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>My Clubs</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>My Clubs</h2>
             </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
@@ -451,6 +486,9 @@ export default function ExploreClubsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
                   aria-label={`View details for ${c.club_name || 'club'}`}
                 >
+                  {c.club_type && (
+                    <div className={styles.clubTypeTag}>{c.club_type}</div>
+                  )}
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -463,11 +501,54 @@ export default function ExploreClubsPage() {
                 <span className={styles.addIcon}>＋</span>
               </button>
             </div>
+            {/* Requested Clubs Section */}
+            <div style={{ marginTop: '1rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Requested Clubs</h2>
+              <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                {myRequests.length === 0 ? (
+                  <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>No requested clubs.</div>
+                ) : (
+                  myRequests.map((r) => (
+                    <div
+                      className={styles.clubCard}
+                      key={`req-${r.request_id}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => openDetails({
+                        club_id: r.club_id,
+                        club_name: r.club_name,
+                        club_profile: r.club_profile,
+                        club_type: r.club_type
+                      }, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault(); openDetails({
+                            club_id: r.club_id,
+                            club_name: r.club_name,
+                            club_profile: r.club_profile,
+                            club_type: r.club_type
+                          }, e);
+                        }
+                      }}
+                      aria-label={`View details for requested club ${r.club_name || 'club'}`}
+                    >
+                      {r.club_type && (
+                        <div className={styles.clubTypeTag}>{r.club_type}</div>
+                      )}
+                      <div className={styles.clubInfo}>
+                        <div className={styles.clubName}>{r.club_name || "Club Name"}</div>
+                        <div className={styles.clubDescription}>{r.club_profile || "No description available."}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </section>
         ) : (
           <section className={styles.section}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-              <h2 style={{ fontSize:'1rem', fontWeight:600, margin:0 }}>All Clubs</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>All Clubs</h2>
             </div>
             <div className={styles.grid}>
               {displayAllClubs.map((c) => (
@@ -480,6 +561,9 @@ export default function ExploreClubsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
                   aria-label={`View details for ${c.club_name || 'club'}`}
                 >
+                  {c.club_type && (
+                    <div className={styles.clubTypeTag}>{c.club_type}</div>
+                  )}
                   <div className={styles.clubInfo}>
                     <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
                     <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
@@ -504,20 +588,20 @@ export default function ExploreClubsPage() {
                 <span className={styles.formLabel}>Club Name</span>
                 <input className={styles.formInput} value={form.club_name} onChange={(e) => setForm({ ...form, club_name: e.target.value })} placeholder="e.g., Princeton Robotics" />
               </label>
-                <label className={styles.formField}>
-                  <span className={styles.formLabel}>Club Type (required)</span>
-                  <select
-                    className={styles.formInput}
-                    value={form.club_type}
-                    required
-                    onChange={(e) => setForm({ ...form, club_type: e.target.value })}
-                  >
-                    <option value="" disabled>Select a type...</option>
-                    {CLUB_TYPES.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </label>
+              <label className={styles.formField}>
+                <span className={styles.formLabel}>Club Type (required)</span>
+                <select
+                  className={styles.formInput}
+                  value={form.club_type}
+                  required
+                  onChange={(e) => setForm({ ...form, club_type: e.target.value })}
+                >
+                  <option value="" disabled>Select a type...</option>
+                  {CLUB_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
               <div className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Officers (your NetID auto-added)</span>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -533,14 +617,14 @@ export default function ExploreClubsPage() {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {currentUser && (
-                    <span style={{ background:'#ffedd5', border:'1px solid #fdba74', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                    <span style={{ background: '#ffedd5', border: '1px solid #fdba74', padding: '0.25rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
                       {currentUser.trim().toLowerCase()} (you)
                     </span>
                   )}
                   {officers.map(o => (
-                    <span key={o} style={{ display:'inline-flex', alignItems:'center', gap:'0.25rem', background:'#e0f2fe', border:'1px solid #7dd3fc', padding:'0.25rem 0.5rem', borderRadius:'0.5rem', fontSize:'0.75rem' }}>
+                    <span key={o} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '0.25rem 0.5rem', borderRadius: '0.5rem', fontSize: '0.75rem' }}>
                       {o}
-                      <button type="button" aria-label={`Remove ${o}`} onClick={() => removeOfficer(o)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:'0.9rem', lineHeight:1 }}>✕</button>
+                      <button type="button" aria-label={`Remove ${o}`} onClick={() => removeOfficer(o)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1 }}>✕</button>
                     </span>
                   ))}
                 </div>
@@ -561,9 +645,18 @@ export default function ExploreClubsPage() {
       )}
 
       {selectedClub && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="club-details-title">
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="club-details-title"
+          style={{ overflowY: 'auto' }}
+        >
           <div className={styles.modalBackdrop} onClick={handleCloseDetails} />
-          <div className={styles.modalContent}>
+          <div
+            className={styles.modalContent}
+            style={{ maxHeight: 'calc(100vh - 5rem)', overflowY: 'auto' }}
+          >
             <div className={styles.modalHeader}>
               <h3 id="club-details-title" className={styles.modalTitle}>{selectedClub.club_name || 'Club Details'}</h3>
               <button ref={closeBtnRef} className={styles.closeButton} onClick={handleCloseDetails} aria-label="Close">✕</button>
@@ -597,24 +690,12 @@ export default function ExploreClubsPage() {
                     <p className={styles.postsEmpty}>No posts yet for this club.</p>
                   ) : (
                     clubPosts.map(p => (
-                      <button
+                      <PostCard
                         key={p.post_id}
-                        type="button"
-                        className={styles.postItem}
+                        post={p}
                         onClick={() => setSelectedPost(p)}
-                      >
-                        <div className={styles.postItemMain}>
-                          <div className={styles.postItemTitle}>{p.post_title}</div>
-                          <div className={styles.postItemMeta}>
-                            {p.post_type && <span>Type: {p.post_type}</span>}
-                            {p.timestamp || p.post_time ? (
-                              <span>
-                                {new Date(p.timestamp || p.post_time).toLocaleString()}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
+                        showSaveButton={false}
+                      />
                     ))
                   )}
                 </div>
@@ -637,6 +718,20 @@ export default function ExploreClubsPage() {
                       Edit
                     </button>
                     <button
+                      onClick={(e) => onLeaveClub(selectedClub, e)}
+                      style={{
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        background: '#f59e0b',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Leave Club
+                    </button>
+                    <button
                       onClick={(e) => onDeleteClub(selectedClub, e)}
                       style={{
                         border: 'none',
@@ -651,6 +746,38 @@ export default function ExploreClubsPage() {
                       Delete
                     </button>
                   </>
+                )}
+                {!myClubs.some(c => c.club_id === selectedClub.club_id) && (
+                  myRequests.some(r => r.club_id === selectedClub.club_id) ? (
+                    <button
+                      disabled
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '0.5rem',
+                        background: '#f3f4f6',
+                        color: '#9ca3af',
+                        padding: '0.5rem 1rem',
+                        cursor: 'not-allowed',
+                        fontWeight: 500
+                      }}
+                    >
+                      Already Requested
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '0.5rem',
+                        background: 'white',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      Request to be an officer
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -734,6 +861,59 @@ export default function ExploreClubsPage() {
                 <button type="submit" className={styles.submitButton} disabled={submitting}>{submitting ? "Updating…" : "Update Club"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {requesting && selectedClub && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modalBackdrop} onClick={() => setRequesting(false)} />
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Request to be an officer</h3>
+              <button ref={closeBtnRef} className={styles.closeButton} onClick={() => setRequesting(false)}>✕</button>
+            </div>
+            <div className={styles.form}>
+              <div style={{ marginBottom: '0.5rem' }}>
+                You are requesting to be an officer of <strong>{selectedClub.club_name}</strong>.
+              </div>
+              <label className={styles.formFieldFull}>
+                <span className={styles.formLabel}>Notes (optional)</span>
+                <textarea
+                  className={styles.formTextarea}
+                  rows={3}
+                  value={requestNotes}
+                  onChange={(e) => setRequestNotes(e.target.value)}
+                  placeholder="Explain why you should be an officer"
+                />
+              </label>
+              {requestError && <div className={styles.errorText}>{requestError}</div>}
+              <div className={styles.formActions}>
+                <button type="button" className={styles.clearButton} onClick={() => setRequesting(false)}>Cancel</button>
+                <button
+                  type="button"
+                  className={styles.submitButton}
+                  disabled={requestSubmitting}
+                  onClick={async () => {
+                    setRequestSubmitting(true);
+                    setRequestError("");
+                    try {
+                      await requestOfficerForClub(selectedClub.club_id, requestNotes);
+                      alert("Request submitted");
+                      await refreshClubs();
+                      setRequesting(false);
+                    } catch (err) {
+                      console.error("Failed to submit request", err);
+                      setRequestError(err.message || "Failed to submit request");
+                    } finally {
+                      setRequestSubmitting(false);
+                    }
+                  }}
+                >
+                  {requestSubmitting ? "Submitting…" : "Confirm Request"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

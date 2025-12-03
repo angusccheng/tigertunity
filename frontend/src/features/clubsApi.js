@@ -71,3 +71,35 @@ export async function deleteClub(clubId) {
   });
   return await handleResponse(r);
 }
+
+export async function requestOfficerForClub(clubId, notes = "") {
+  const r = await fetch(`${API_BASE}/api/club-requests`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccess()}`,
+    },
+    body: JSON.stringify({ club_id: clubId, notes }),
+  });
+  return await handleResponse(r);
+}
+
+export async function fetchMyClubRequests() {
+  const r = await fetch(`${API_BASE}/api/club-requests/mine`, {
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  if (r.status === 401) return [];
+  return await handleResponse(r);
+}
+
+export async function leaveClub(clubId) {
+  const r = await fetch(`${API_BASE}/api/clubs/${clubId}/leave`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  return await handleResponse(r);
+}

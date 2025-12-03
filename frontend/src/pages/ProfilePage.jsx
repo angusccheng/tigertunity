@@ -4,14 +4,18 @@ import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
+import { fetchAdminClubRequests, approveClubRequest, rejectClubRequest } from "../features/adminApi.js";
+import { fetchConversations, fetchUsers } from "../features/dmApi.js"; // ---------------------------- // DM API imports
+import DMMessenger from "../components/DMMessenger.jsx";
 
 export default function ProfilePage() {
   const user = getUser();
-  const [sortBy, setSortBy] = useState("post-date"); // "post-date" or "event-date"
+
+  // Saved posts
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // for modal
-  const [notepad, setNotepad] = useState("Click to add notes...");
+  const [notepad, setNotepad] = useState("");
   const [isEditingNotepad, setIsEditingNotepad] = useState(false);
   const [notepadLoading, setNotepadLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
@@ -19,7 +23,22 @@ export default function ProfilePage() {
   const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
   const [preferences, setPreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
+  // DM Inbox
+  const [conversations, setConversations] = useState([]);
+  const [activeDM, setActiveDM] = useState(null);
+
+  // User picker modal
+  const [showUserPicker, setShowUserPicker] = useState(false);
+  const [userList, setUserList] = useState([]);
+
+  // ----------------------------
+  // Load saved posts
+  // ----------------------------
   useEffect(() => {
     async function loadSavedPosts() {
       if (!user) {
@@ -46,7 +65,7 @@ export default function ProfilePage() {
       }
       try {
         const response = await fetchNotepad(user);
-        setNotepad(response.notepad || "Click to add notes...");
+        setNotepad(response.notepad || "");
       } catch (err) {
         console.error("Failed to load notepad:", err);
       } finally {
@@ -93,13 +112,87 @@ export default function ProfilePage() {
     loadPreferences();
   }, [user]);
 
-  async function handleUnsavePost(postId, e) {
-    e.stopPropagation(); // Prevent opening the post modal
+  // Admin: load club requests if user is admin
+  useEffect(() => {
+    async function loadAdminRequests() {
+      if (!user) {
+        setAdminLoading(false);
+        return;
+      }
+      try {
+        const resp = await fetchAdminClubRequests();
+        if (resp._forbidden) {
+          setIsAdmin(false);
+          setAdminRequests([]);
+        } else {
+          setIsAdmin(true);
+          const list = Array.isArray(resp.data) ? resp.data : [];
+          // Sort by request_time descending (most recent first)
+          const sorted = [...list].sort((a, b) => {
+            const ta = a && a.request_time ? new Date(a.request_time).getTime() : 0;
+            const tb = b && b.request_time ? new Date(b.request_time).getTime() : 0;
+            return tb - ta;
+          });
+          setAdminRequests(sorted);
+        }
+      } catch (err) {
+        // If any error, assume not admin
+        console.error("Failed to load admin club requests:", err);
+        setIsAdmin(false);
+        setAdminRequests([]);
+      } finally {
+        setAdminLoading(false);
+      }
+    }
+    loadAdminRequests();
+  }, [user]);
+
+  // ----------------------------
+  // Load DM conversations (updated to use dmApi.js)
+  // ----------------------------
+  useEffect(() => {
     if (!user) return;
+
+    async function loadConvos() {
+      try {
+        const data = await fetchConversations(); // ✔ replaced old fetch with authenticated DM API
+        setConversations(data);
+      } catch (err) {
+        console.error("Failed to load DM list:", err);
+      }
+    }
+
+    loadConvos();
+  }, [user]);
+
+  // ----------------------------
+  // Load list of all users (updated to use dmApi.js)
+  // ----------------------------
+  useEffect(() => {
+    if (!showUserPicker) return;
+
+    async function loadUsers() {
+      try {
+        const data = await fetchUsers(); // ✔ replaced old fetch with authenticated DM API
+        setUserList(data);
+      } catch (err) {
+        console.error("Failed to load user list:", err);
+      }
+    }
+
+    loadUsers();
+  }, [showUserPicker]);
+
+  // ----------------------------
+  // Unsave a post
+  // ----------------------------
+  async function handleUnsavePost(postId, e) {
+    e.stopPropagation();
+    if (!user) return;
+
     try {
       await unsavePost(user, postId);
-      // Remove from local state
-      setSavedPosts(prev => prev.filter(p => p.post_id !== postId));
+      setSavedPosts((prev) => prev.filter((p) => p.post_id !== postId));
     } catch (err) {
       console.error(err);
     }
@@ -137,27 +230,20 @@ export default function ProfilePage() {
     });
   }
 
-  // Placeholder data - replace with actual API calls later
-  const savedEvents = [
-    { id: 1, subject: "Lorem", content: "Ipsum" },
-    { id: 2, subject: "Lorem", content: "Ipsum" },
-    { id: 3, subject: "Lorem", content: "Ipsum" },
-    { id: 4, subject: "Lorem", content: "Ipsum" },
-  ];
-
   return (
     <div className={styles.pageContainer}>
       <Header />
 
       <main className={styles.mainContent}>
-        {/* Page Title */}
         <h1 className={styles.pageTitle}>Profile</h1>
 
         <div className={styles.grid}>
-          {/* Left Column - Profile Info */}
+
+          {/* LEFT COLUMN */}
           <div className={styles.profileColumn}>
-            {/* User Profile Section */}
             <div className={styles.profileCard}>
+
+              {/* PROFILE HEADER */}
               <div className={styles.profileHeader}>
                 {/* User Info */}
                 <div className={styles.profileInfo}>
@@ -195,6 +281,7 @@ export default function ProfilePage() {
                     value={notepad}
                     onChange={(e) => setNotepad(e.target.value)}
                     onBlur={handleSaveNotepad}
+                    placeholder="Click to add notes..."
                     autoFocus
                     rows={4}
                   />
@@ -203,7 +290,11 @@ export default function ProfilePage() {
                     className={styles.bioDisplay}
                     onClick={() => setIsEditingNotepad(true)}
                   >
-                    {notepad}
+                    {notepad && notepad.trim() !== "" ? (
+                      notepad
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>Click to add notes...</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -211,7 +302,7 @@ export default function ProfilePage() {
               {/* Preferences Section */}
               <div className={styles.bioSection}>
                 <h3 className={styles.bioTitle}>My Preferences</h3>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {POST_TYPES.map((t) => (
                     <button
                       key={t}
@@ -225,20 +316,144 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+
+              {/* Admin Section */}
+              {isAdmin && (
+                <div className={styles.bioSection}>
+                  <h3 className={styles.bioTitle}>Admin: Club Requests</h3>
+                  {adminLoading ? (
+                    <div className={styles.bioDisplay}>Loading...</div>
+                  ) : adminRequests.length === 0 ? (
+                    <div className={styles.bioDisplay}>No club requests found.</div>
+                  ) : (
+                    <div className={styles.adminRequestsList}>
+                      {adminRequests.map((req) => {
+                        const UserDisplay = req.display_name
+                          ? `${req.display_name} (${req.user_name})`
+                          : (req.user_name);
+                        return (
+                          <div key={req.request_id} className={styles.requestCard}>
+                            <button
+                              type="button"
+                              className={styles.requestButton}
+                              onClick={() => setSelectedRequest(req)}
+                            >
+                              <div className={styles.requestTitle}>Club Officer Request</div>
+                              <div className={styles.requestHeader}>
+                                <div className={styles.requestInfo}>
+                                  <strong>User:</strong> {UserDisplay}
+                                  <strong>Club:</strong> {req.club_name}
+                                  <strong>Requested:</strong> {new Date(req.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              {req.notes && (
+                                <div className={styles.requestNotes}>
+                                  <strong>Notes:</strong> {req.notes}
+                                </div>
+                              )}
+                            </button>
+                            <div className={styles.requestActions}>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const userDisplay = req.display_name
+                                    ? `${req.display_name} (${req.user_name})`
+                                    : req.user_name;
+                                  const clubName = req.club_name || req.club_id;
+                                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
+                                  if (!ok) return;
+                                  try {
+                                    await approveClubRequest(req.request_id);
+                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                  } catch (err) {
+                                    alert(`Failed to approve: ${err.message}`);
+                                  }
+                                }}
+                                className={styles.approveButton}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const userDisplay = req.display_name
+                                    ? `${req.display_name} (${req.user_name})`
+                                    : req.user_name;
+                                  const clubName = req.club_name || req.club_id;
+                                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}? This will permanently delete their request.`);
+                                  if (!ok) return;
+                                  try {
+                                    await rejectClubRequest(req.request_id);
+                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
+                                  } catch (err) {
+                                    alert(`Failed to reject: ${err.message}`);
+                                  }
+                                }}
+                                className={styles.rejectButton}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* DM INBOX */}
+              <div className={styles.dmInboxCard}>
+                <div className={styles.dmInboxHeader}>
+                  <h3 className={styles.dmInboxTitle}>Messages</h3>
+
+                  <button
+                    className={styles.newDMButton}
+                    onClick={() => setShowUserPicker(true)}
+                  >
+                    + New DM
+                  </button>
+                </div>
+
+                {conversations.length === 0 ? (
+                  <p className={styles.emptyText}>
+                    No conversations yet — start a DM!
+                  </p>
+                ) : (
+                  <div className={styles.dmList}>
+                    {conversations.map((c) => (
+                      <button
+                        key={c.conversation_id}
+                        className={styles.dmItem}
+                        onClick={() => setActiveDM(c.other_user)}
+                      >
+                        <div className={styles.dmAvatar} />
+                        <div className={styles.dmTextBlock}>
+                          <p className={styles.dmName}>{c.other_user}</p>
+                          <p className={styles.dmPreview}>
+                            {c.last_message || "No messages yet"}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 
-          {/* Right Column - Saved Posts */}
+          {/* RIGHT COLUMN – SAVED POSTS */}
           <div className={styles.savedEventsColumn}>
             <div className={styles.savedEventsCard}>
               <h2 className={styles.savedEventsTitle}>Saved Posts</h2>
 
-              {/* Event List */}
               <div className={styles.eventsList}>
                 {loading ? (
                   <p className={styles.loadingText}>Loading...</p>
                 ) : savedPosts.length === 0 ? (
-                  <p className={styles.emptyText}>No saved posts yet. Save posts from the feed!</p>
+                  <p className={styles.emptyText}>
+                    No saved posts yet. Save posts from the feed!
+                  </p>
                 ) : (
                   savedPosts.map((post) => (
                     <PostCard
@@ -254,50 +469,135 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
         </div>
       </main>
 
-      {selected && (
+      {/* DM POPUP WINDOW */}
+      {activeDM && (
+        <DMMessenger
+          otherUser={activeDM}
+          onClose={() => setActiveDM(null)}
+        />
+      )}
+
+      {/* USER PICKER MODAL */}
+      {showUserPicker && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalBackdrop} onClick={() => setSelected(null)} />
-          <div className={styles.readModalContent}>
+          <div
+            className={styles.modalBackdrop}
+            onClick={() => setShowUserPicker(false)}
+          />
+          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{selected.post_title}</h2>
+              <h2 className={styles.modalTitle}>Select a user to DM</h2>
               <button
                 type="button"
-                onClick={() => setSelected(null)}
+                onClick={() => setShowUserPicker(false)}
                 className={styles.closeButton}
               >
                 ✕
               </button>
             </div>
+            <div className={styles.userPicker}>
+              {userList.length === 0 ? (
+                <p>Loading…</p>
+              ) : (
+                userList.map((u) => (
+                  <button
+                    key={u}
+                    className={styles.userRow}
+                    onClick={() => {
+                      setActiveDM(u);
+                      setShowUserPicker(false);
+                    }}
+                  >
+                    <div className={styles.dmAvatarSmall} />
+                    {u}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className={styles.readModalGrid}>
-              <div className={styles.readModalMain}>
-                <div className={styles.readModalMeta}>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Club: </strong> {selected.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                      selected.officer_display_name 
-                        ? `${selected.officer_display_name} (${selected.officer_name})`
-                        : selected.officer_name
-                    }</span>
-                  </p>
+      {/* Request Details Modal */}
+      {selectedRequest && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedRequest(null)}>
+          <div className={styles.modalBackdrop} />
+          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Club Officer Request Details</h2>
+              <button
+                type="button"
+                onClick={() => setSelectedRequest(null)}
+                className={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+            {(() => {
+              const userDisplay = selectedRequest?.display_name
+                ? `${selectedRequest.display_name} (${selectedRequest.user_name})`
+                : (selectedRequest.user_name);
+              return (
+                <div className={styles.readMeta}>
+                  <div><strong>User:</strong> {userDisplay}</div>
+                  <div><strong>Club:</strong> {selectedRequest.club_name || selectedRequest.club_id}</div>
+                  <div><strong>Requested:</strong> {new Date(selectedRequest.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
-                <p className={styles.readModalDate}>
-                  {selected.timestamp ? new Date(selected.timestamp).toLocaleString() : ""}
-                </p>
-                <p className={styles.readModalContentText}>{selected.post_description || selected.post_content || ""}</p>
+              );
+            })()}
+            {selectedRequest.notes && (
+              <div className={styles.modalNotes}>
+                <div className={styles.modalNotesLabel}><strong>Notes:</strong></div>
+                <div className={styles.modalNotesBody}>{selectedRequest.notes}</div>
               </div>
-
-              <aside className={styles.readModalSidebar}>
-                <div className={styles.readModalType}>
-                  <p>Type:</p>
-                  <p className={styles.readModalTypeValue}>{selected.post_type}</p>
-                </div>
-              </aside>
+            )}
+            <div className={styles.requestActions} style={{ marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const userDisplay = selectedRequest.display_name
+                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
+                    : (selectedRequest.user_name || selectedRequest.user_id);
+                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
+                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
+                  if (!ok) return;
+                  try {
+                    await approveClubRequest(selectedRequest.request_id);
+                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
+                    setSelectedRequest(null);
+                  } catch (err) {
+                    alert(`Failed to approve: ${err.message}`);
+                  }
+                }}
+                className={styles.approveButton}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const userDisplay = selectedRequest.display_name
+                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
+                    : (selectedRequest.user_name || selectedRequest.user_id);
+                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
+                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}?`);
+                  if (!ok) return;
+                  try {
+                    await rejectClubRequest(selectedRequest.request_id);
+                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
+                    setSelectedRequest(null);
+                  } catch (err) {
+                    alert(`Failed to reject: ${err.message}`);
+                  }
+                }}
+                className={styles.rejectButton}
+              >
+                Reject
+              </button>
             </div>
           </div>
         </div>

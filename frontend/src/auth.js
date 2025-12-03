@@ -92,3 +92,26 @@ export async function refreshAccessIfNeeded() {
     return;
   }
 }
+
+// ---------------- Authenticated fetch wrapper ----------------
+
+export async function authFetch(url, options = {}) {
+  const access = getAccess();
+
+  // Start with any caller-provided headers
+  const headers = {
+    ...(options.headers || {}),
+  };
+
+  // Ensure we have a Content-Type unless caller already set one
+  if (!headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  // Only add Authorization header if we actually have a token
+  if (access) {
+    headers["Authorization"] = `Bearer ${access}`;
+  }
+
+  return fetch(url, { ...options, headers });
+}

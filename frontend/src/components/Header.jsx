@@ -48,6 +48,7 @@ export default function Header() {
               <a
                 className={styles.logoutButton}
                 href={`${BACKEND}/logoutcas`}
+                onClick={() => clearTokens()}
               >
                 Logout
               </a>

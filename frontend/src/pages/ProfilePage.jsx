@@ -9,6 +9,10 @@ import { fetchConversations, fetchUsers } from "../features/dmApi.js"; // ------
 import DMMessenger from "../components/DMMessenger.jsx";
 import ClubRequestCard from "../components/ClubRequestCard.jsx";
 
+// Constants for preference options
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
+const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+
 export default function ProfilePage() {
   const user = getUser();
 
@@ -22,7 +26,8 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(true);
   const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
-  const [preferences, setPreferences] = useState(new Set());
+  const [postTypePreferences, setPostTypePreferences] = useState(new Set());
+  const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [adminRequests, setAdminRequests] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -101,8 +106,10 @@ export default function ProfilePage() {
       }
       try {
         const resp = await fetchPreferences(user);
-        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
-        setPreferences(new Set(arr));
+        const postTypes = Array.isArray(resp.post_types) ? resp.post_types : [];
+        const clubTypes = Array.isArray(resp.club_types) ? resp.club_types : [];
+        setPostTypePreferences(new Set(postTypes));
+        setClubTypePreferences(new Set(clubTypes));
       } catch (err) {
         console.error("Failed to load preferences:", err);
       } finally {
@@ -238,13 +245,24 @@ export default function ProfilePage() {
     }
   }
 
-  async function togglePreference(type) {
+  async function togglePostTypePreference(type) {
     if (!user) return;
-    setPreferences(prev => {
+    setPostTypePreferences(prev => {
       const next = new Set(prev);
       if (next.has(type)) next.delete(type); else next.add(type);
       // Fire-and-forget save
-      updatePreferences(user, Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
+      updatePreferences(user, Array.from(next), Array.from(clubTypePreferences)).catch((e) => console.error("Failed to save preferences", e));
+      return next;
+    });
+  }
+
+  async function toggleClubTypePreference(type) {
+    if (!user) return;
+    setClubTypePreferences(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      // Fire-and-forget save
+      updatePreferences(user, Array.from(postTypePreferences), Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
       return next;
     });
   }
@@ -321,14 +339,30 @@ export default function ProfilePage() {
               {/* Preferences Section */}
               <div className={styles.bioSection}>
                 <h3 className={styles.bioTitle}>My Preferences</h3>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#171717', marginTop: '0.75rem', marginBottom: '0.5rem' }}>Post Types</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {POST_TYPES.map((t) => (
                     <button
                       key={t}
                       type="button"
-                      onClick={() => togglePreference(t)}
+                      onClick={() => togglePostTypePreference(t)}
                       disabled={prefsLoading}
-                      className={preferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                      className={postTypePreferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#171717', marginTop: '1rem', marginBottom: '0.5rem' }}>Club Types</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {CLUB_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleClubTypePreference(t)}
+                      disabled={prefsLoading}
+                      className={clubTypePreferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
                     >
                       {t}
                     </button>

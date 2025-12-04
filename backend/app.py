@@ -1005,7 +1005,10 @@ def update_officer_notepad(officer_name):
 @app.route('/api/officers/<string:officer_name>/preferences', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def get_officer_preferences(officer_name):
-    """Get saved post type preferences for an officer"""
+    """Get saved post type and club type preferences for an officer.
+    Returns: {'post_types': [...], 'club_types': [...]}
+    Stored format: post types as-is, club types prefixed with 'club:'
+    """
     try:
         current_user = flask_jwt_extended.get_jwt_identity()
         if current_user != officer_name:
@@ -1013,33 +1016,49 @@ def get_officer_preferences(officer_name):
 
         officer = database.get_member_by_name(officer_name)
         if officer is None:
-            return flask.jsonify({'preferences': []})
+            return flask.jsonify({'post_types': [], 'club_types': []})
 
         prefs = getattr(officer, 'user_preferences', []) or []
-        return flask.jsonify({'preferences': prefs})
+        # Separate post types and club types
+        post_types = [p for p in prefs if not p.startswith('club:')]
+        club_types = [p[5:] for p in prefs if p.startswith('club:')]  # Remove 'club:' prefix
+        
+        return flask.jsonify({'post_types': post_types, 'club_types': club_types})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
 @app.route('/api/officers/<string:officer_name>/preferences', methods=['PUT'])
 @flask_jwt_extended.jwt_required()
 def update_officer_preferences(officer_name):
-    """Update saved post type preferences for an officer"""
+    """Update saved post type and club type preferences for an officer.
+    Expects: {'post_types': [...], 'club_types': [...]}
+    Stores: post types as-is, club types prefixed with 'club:'
+    """
     try:
         current_user = flask_jwt_extended.get_jwt_identity()
         if current_user != officer_name:
             return flask.jsonify({'error': 'Unauthorized'}), 403
 
         data = flask.request.get_json() or {}
-        preferences = data.get('preferences') or []
-        if not isinstance(preferences, list):
-            return flask.jsonify({'error': 'preferences must be a list of strings'}), 400
+        post_types = data.get('post_types') or []
+        club_types = data.get('club_types') or []
+        
+        if not isinstance(post_types, list) or not isinstance(club_types, list):
+            return flask.jsonify({'error': 'post_types and club_types must be lists'}), 400
 
         officer = database.get_member_by_name(officer_name)
         if officer is None:
             return flask.jsonify({'error': 'Member ID does not exist'})
 
-        database.update_member(officer.user_id, user_preferences=preferences)
-        return flask.jsonify({'message': 'Preferences updated successfully', 'preferences': preferences})
+        # Combine into single array with club types prefixed
+        combined_prefs = post_types + ['club:' + ct for ct in club_types]
+        
+        database.update_member(officer.user_id, user_preferences=combined_prefs)
+        return flask.jsonify({
+            'message': 'Preferences updated successfully',
+            'post_types': post_types,
+            'club_types': club_types
+        })
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 

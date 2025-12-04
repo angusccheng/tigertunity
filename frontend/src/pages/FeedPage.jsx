@@ -40,7 +40,8 @@ export default function FeedPage() {
   // Post limit state
   const [postLimit, setPostLimit] = useState(50);
   // My Preferences
-  const [preferences, setPreferences] = useState(new Set());
+  const [postTypePreferences, setPostTypePreferences] = useState(new Set());
+  const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
   const [savedFiltersBeforePrefs, setSavedFiltersBeforePrefs] = useState(null);
@@ -124,12 +125,15 @@ export default function FeedPage() {
   useEffect(() => {
     (async () => {
       setPrefsLoaded(false);
-      setPreferences(new Set());
+      setPostTypePreferences(new Set());
+      setClubTypePreferences(new Set());
       if (!user) { setPrefsLoaded(true); return; }
       try {
         const resp = await fetchPreferences(user);
-        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
-        setPreferences(new Set(arr));
+        const postTypes = Array.isArray(resp.post_types) ? resp.post_types : [];
+        const clubTypes = Array.isArray(resp.club_types) ? resp.club_types : [];
+        setPostTypePreferences(new Set(postTypes));
+        setClubTypePreferences(new Set(clubTypes));
       } catch (e) {
         // ignore
       } finally {
@@ -418,6 +422,7 @@ export default function FeedPage() {
         <aside className={styles.sidebar}>
           <h2 className={styles.sidebarTitle}>Filters</h2>
           <div className={styles.filterSection}>
+
             {/* Post Filters */}
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
@@ -433,63 +438,6 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
-              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
-                <label className={styles.dateFilterToggle}>
-                  <input
-                    type="checkbox"
-                    checked={myPrefsEnabled}
-                    onChange={(e) => {
-                      const next = e.target.checked;
-                      if (!user || preferences.size === 0) return; // ignore if not available
-                      
-                      if (next) {
-                        // Save current filters before applying preferences
-                        setSavedFiltersBeforePrefs(new Set(activePostFilters));
-                        // Apply preferences to active filters
-                        setActivePostFilters(new Set(preferences));
-                      } else {
-                        // Restore previous filters
-                        if (savedFiltersBeforePrefs) {
-                          setActivePostFilters(savedFiltersBeforePrefs);
-                          setSavedFiltersBeforePrefs(null);
-                        }
-                      }
-                      
-                      setMyPrefsEnabled(next);
-                    }}
-                    disabled={!user || preferences.size === 0}
-                    className={styles.dateCheckbox}
-                  />
-                  Apply My Preferences
-                </label>
-              </div>
-              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
-                <label className={styles.dateFilterToggle}>
-                  <input
-                    type="checkbox"
-                    checked={onlyShowSavedClubs}
-                    onChange={e => setOnlyShowSavedClubs(e.target.checked)}
-                    disabled={!user || savedClubs.length === 0}
-                    className={styles.dateCheckbox}
-                  />
-                  Only Show Saved Clubs
-                </label>
-              </div>
-              {!user && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  Log in to use My Preferences and Saved Clubs.
-                </div>
-              )}
-              {user && prefsLoaded && preferences.size === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  No preferences set yet — configure them on your Profile.
-                </div>
-              )}
-              {user && savedClubs.length === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  No saved clubs yet — star clubs in Explore to save them.
-                </div>
-              )}
             </section>
 
             {/* Club Type Filters */}
@@ -507,6 +455,79 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
+            </section>
+
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={myPrefsEnabled}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      if (!user || (postTypePreferences.size === 0 && clubTypePreferences.size === 0)) return; // ignore if not available
+                      
+                      if (next) {
+                        // Save current filters before applying preferences
+                        setSavedFiltersBeforePrefs({
+                          postFilters: new Set(activePostFilters),
+                          clubFilters: new Set(activeClubTypeFilters)
+                        });
+                        // Apply preferences to active filters
+                        if (postTypePreferences.size > 0) {
+                          setActivePostFilters(new Set(postTypePreferences));
+                        }
+                        if (clubTypePreferences.size > 0) {
+                          setActiveClubTypeFilters(new Set(clubTypePreferences));
+                        }
+                      } else {
+                        // Restore previous filters
+                        if (savedFiltersBeforePrefs) {
+                          setActivePostFilters(savedFiltersBeforePrefs.postFilters);
+                          setActiveClubTypeFilters(savedFiltersBeforePrefs.clubFilters);
+                          setSavedFiltersBeforePrefs(null);
+                        }
+                      }
+                      
+                      setMyPrefsEnabled(next);
+                    }}
+                    disabled={!user || (postTypePreferences.size === 0 && clubTypePreferences.size === 0)}
+                    className={styles.dateCheckbox}
+                  />
+                  Apply My Preferences
+                </label>
+              </div>
+            </section>
+
+            {/* Saved Clubs Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={onlyShowSavedClubs}
+                    onChange={e => setOnlyShowSavedClubs(e.target.checked)}
+                    disabled={!user || savedClubs.length === 0}
+                    className={styles.dateCheckbox}
+                  />
+                  Only Show Saved Clubs
+                </label>
+              </div>
+              {!user && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  Log in to use My Preferences and Saved Clubs.
+                </div>
+              )}
+              {user && prefsLoaded && postTypePreferences.size === 0 && clubTypePreferences.size === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No preferences set yet — configure them on your Profile.
+                </div>
+              )}
+              {user && savedClubs.length === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No saved clubs yet — star clubs in Explore to save them.
+                </div>
+              )}
             </section>
 
             {/* Filter by Post Date */}

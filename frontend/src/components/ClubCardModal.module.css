@@ -12,11 +12,22 @@
   display: block;
   margin-bottom: 0.25rem;
   color: #171717;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .readModalMeta {
   margin-top: 0.25rem;
   color: #525252;
   line-height: 1.4;
+  font-size: 1rem;
+}
+
+.aboutSections {
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5rem;
+}
+.aboutSection strong {
+  color: #171717;
+  font-size: 1rem;
 }

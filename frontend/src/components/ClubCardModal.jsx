@@ -100,7 +100,7 @@ export default function ClubCardModal({
         </div>
 
         {/* About section */}
-        <div>
+        <div className={modalStyles.aboutSections}>
           <strong>About:</strong>
           <div className={modalStyles.readModalMeta}>
             {club.club_profile || 'No description available.'}

@@ -42,6 +42,13 @@ export default function PostModal({ post, onClose, onDelete, canModify, myClubs,
     });
   };
 
+  const handleDelete = () => {
+    const confirmed = window.confirm(`Are you sure you want to delete "${post.post_title}"? This action cannot be undone.`);
+    if (confirmed) {
+      onDelete(post);
+    }
+  };
+
   return (
     <div id={isEditing ? "edit-modal" : "post-modal"} role="dialog" aria-modal="true" className={styles.modalOverlay}>
       <div className={styles.modalBackdrop} onClick={isEditing ? handleCancelEdit : onClose} />
@@ -179,7 +186,7 @@ export default function PostModal({ post, onClose, onDelete, canModify, myClubs,
 
             {/* Second row: Post time, Edit time, Event time/Deadline */}
             <div className={styles.secondRow}>
-              {post.timestamp && (
+              {post.timestamp && !post.edit_status &&(
                 <div>
                   <strong>Posted:</strong>
                   <div className={styles.readModalMeta}>
@@ -265,7 +272,7 @@ export default function PostModal({ post, onClose, onDelete, canModify, myClubs,
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDelete(post)}
+                  onClick={handleDelete}
                   className={styles.deleteButton}
                 >
                   Delete

@@ -378,12 +378,15 @@ def list_clubs():
         for club in clubs:
             entry = model_to_dict(club)
             # Enrich with officer names
-            officer_names = []
+            officer_display_names = []
             for oid in (club.club_officers or []):
                 officer = database.get_member_by_id(oid)
                 if officer:
-                    officer_names.append(officer.user_name)
-            entry['officer_names'] = officer_names
+                    if getattr(officer, 'display_name', None):
+                        officer_display_names.append(getattr(officer, 'display_name', None) + f" ({officer.user_name})")
+                    else:
+                        officer_display_names.append(officer.user_name)
+            entry['officer_display_names'] = officer_display_names
             clubs_dict.append(entry)
         return flask.jsonify(clubs_dict)
     except Exception as e:
@@ -407,12 +410,15 @@ def list_my_officer_clubs():
             if club is not None:
                 entry = model_to_dict(club)
                 # Enrich with officer names
-                officer_names = []
+                officer_display_names = []
                 for oid in (club.club_officers or []):
                     officer_obj = database.get_member_by_id(oid)
                     if officer_obj:
-                        officer_names.append(officer_obj.user_name)
-                entry['officer_names'] = officer_names
+                        if getattr(officer_obj, 'display_name', None):
+                            officer_display_names.append(getattr(officer_obj, 'display_name', None) + f" ({officer_obj.user_name})")
+                        else:
+                            officer_display_names.append(officer_obj.user_name)
+                entry['officer_display_names'] = officer_display_names
                 result.append(entry)
         return flask.jsonify(result)
     except Exception as e:
@@ -525,12 +531,15 @@ def update_club(club_id):
         entry = model_to_dict(club)
         
         # Enrich with officer names
-        officer_names = []
+        officer_display_names = []
         for oid in (club.club_officers or []):
             officer_obj = database.get_member_by_id(oid)
             if officer_obj:
-                officer_names.append(officer_obj.user_name)
-        entry['officer_names'] = officer_names
+                if getattr(officer_obj, 'display_name', None):
+                    officer_display_names.append(getattr(officer_obj, 'display_name', None) + f" ({officer_obj.user_name})")
+                else:
+                    officer_display_names.append(officer_obj.user_name)
+        entry['officer_display_names'] = officer_display_names
         
         return flask.jsonify({'message': 'Club updated successfully', 'entry': entry})
     except Exception as e:
@@ -882,7 +891,18 @@ def get_saved_clubs_for_officer(officer_name):
         for club_id in saved_club_ids:
             club = database.get_club_by_id(club_id)
             if club is not None:
-                clubs.append(model_to_dict(club))
+                entry = model_to_dict(club)
+                # Enrich with officer names
+                officer_display_names = []
+                for oid in (club.club_officers or []):
+                    officer_obj = database.get_member_by_id(oid)
+                    if officer_obj:
+                        if getattr(officer_obj, 'display_name', None):
+                            officer_display_names.append(getattr(officer_obj, 'display_name', None) + f" ({officer_obj.user_name})")
+                        else:
+                            officer_display_names.append(officer_obj.user_name)
+                entry['officer_display_names'] = officer_display_names
+                clubs.append(entry)
         
         return flask.jsonify(clubs)
         
@@ -1090,7 +1110,6 @@ def get_saved_posts_for_officer(officer_name):
                 pass
             try:
                 officer_obj = database.get_member_by_id(entry.get('officer_id'))
-                print(officer_obj)
                 if officer_obj is not None:
                     entry['officer_name'] = getattr(officer_obj, 'user_name', None)
                     entry['officer_display_name'] = getattr(officer_obj, 'display_name', None)
@@ -1219,7 +1238,7 @@ def admin_approve_club_request(request_id):
 
         # Add officer to the club if not already
         if not database.add_officer_to_club(club.club_id, officer.user_id):
-            print('add_oficer_to_club did not work')
+            print('add_officer_to_club did not work')
             return flask.jsonify({'error': 'Couldn\'t add officer to club'})
         # Link club to officer
         if not database.add_club_to_member(officer.user_id, club.club_id):

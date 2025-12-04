@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "../pages/ExploreClubsPage.module.css";
+import modalStyles from "./ClubCardModal.module.css";
 import PostCard from "./PostCard.jsx";
 import { fetchPostsByClub } from "../features/postApi.js";
 
@@ -79,27 +80,35 @@ export default function ClubCardModal({
           <h3 id="club-details-title" className={styles.modalTitle}>{club.club_name || 'Club Details'}</h3>
           <button ref={closeBtnRef} className={styles.closeButton} onClick={onClose} aria-label="Close">✕</button>
         </div>
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
+
+        {/* Top row: Type and Officers */}
+        <div className={modalStyles.topRow}>
           {club.club_type && (
-            <div><strong>Type:</strong> {club.club_type}</div>
-          )}
-          <div>
-            <strong>About:</strong>
-            <div style={{ marginTop: '0.25rem', color: '#525252', lineHeight: 1.4 }}>
-              {club.club_profile || 'No description available.'}
+            <div>
+              <strong>Type:</strong>
+              <div className={modalStyles.readModalMeta}>{club.club_type}</div>
             </div>
-          </div>
-          {club.officer_names && club.officer_names.length > 0 && (
+          )}
+          {club.officer_display_names && club.officer_display_names.length > 0 && (
             <div>
               <strong>Officers:</strong>
-              <div style={{ marginTop: '0.25rem', color: '#525252' }}>
-                {club.officer_names.join(', ')}
+              <div className={modalStyles.readModalMeta}>
+                {club.officer_display_names.join(', ')}
               </div>
             </div>
           )}
+        </div>
 
-          {/* Club Posts */}
-          <div className={styles.postsCard}>
+        {/* About section */}
+        <div>
+          <strong>About:</strong>
+          <div className={modalStyles.readModalMeta}>
+            {club.club_profile || 'No description available.'}
+          </div>
+        </div>
+
+        {/* Club Posts */}
+        <div className={styles.postsCard}>
             <h4 className={styles.postsTitle}>Club Posts</h4>
             <div className={styles.postsList}>
               {clubPostsLoading ? (
@@ -200,6 +209,5 @@ export default function ClubCardModal({
           </div>
         </div>
       </div>
-    </div>
   );
 }

@@ -40,6 +40,7 @@ export default function ProfilePage() {
   // User picker modal
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [userList, setUserList] = useState([]);
+  const [userSearch, setUserSearch] = useState("");
 
   // ----------------------------
   // Load saved posts
@@ -491,7 +492,7 @@ export default function ProfilePage() {
             className={styles.modalBackdrop}
             onClick={() => setShowUserPicker(false)}
           />
-          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.userPickerModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Select a user to DM</h2>
               <button
@@ -502,30 +503,41 @@ export default function ProfilePage() {
                 ✕
               </button>
             </div>
-            <div className={styles.userPicker}>
+            <input
+              type="text"
+              placeholder="Search users..."
+              className={styles.userSearchInput}
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+            />
+            <div className={styles.userGrid}>
               {userList.length === 0 ? (
-                <p>Loading…</p>
+                <p className={styles.emptyMessage}>Loading…</p>
               ) : (
                 (() => {
-                  // Filter out users we already have conversations with
                   const conversationUsers = new Set(conversations.map(c => c.other_user));
-                  const availableUsers = userList.filter(u => !conversationUsers.has(u));
+                  const query = userSearch.trim().toLowerCase();
+                  const filtered = userList.filter(u => {
+                    const matchesSearch = !query || (u && u.toLowerCase().includes(query));
+                    const notInConversations = !conversationUsers.has(u);
+                    return matchesSearch && notInConversations;
+                  });
                   
-                  if (availableUsers.length === 0) {
-                    return <p>No new users available to message.</p>;
+                  if (filtered.length === 0) {
+                    return <p className={styles.emptyMessage}>No users found.</p>;
                   }
                   
-                  return availableUsers.map((u) => (
+                  return filtered.map((u) => (
                     <button
                       key={u}
-                      className={styles.userRow}
+                      className={styles.userTile}
                       onClick={() => {
                         setActiveDM(u);
                         setShowUserPicker(false);
                       }}
                     >
-                      <div className={styles.dmAvatarSmall} />
-                      {u}
+                      <div className={styles.dmAvatarLarge} />
+                      <div className={styles.userTileName}>{u}</div>
                     </button>
                   ));
                 })()

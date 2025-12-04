@@ -19,24 +19,22 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 48rem;
+  max-width: 56rem;
   border-radius: 1rem;
   border: 1px solid #e5e5e5;
   background: white;
-  padding: 1.5rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem;
 }
 
 .modalHeader {
-  margin-bottom: 1rem;
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
 .modalTitle {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #171717;
 }
@@ -45,39 +43,26 @@
   border-radius: 9999px;
   border: 1px solid #e5e5e5;
   padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  background: none;
+  background: white;
   cursor: pointer;
 }
 
 /* Form */
 .form {
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .formFieldFull {
-  grid-column: span 1 / span 1;
-}
-
-@media (min-width: 768px) {
-  .formFieldFull {
-    grid-column: span 2 / span 2;
-  }
+  grid-column: span 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .formLabel {
-  margin-bottom: 0.25rem;
-  display: block;
   font-size: 0.75rem;
-  font-weight: 500;
   color: #525252;
 }
 
@@ -125,46 +110,28 @@
 }
 
 .formActions {
-  grid-column: span 1 / span 1;
+  grid-column: span 2 / span 2;
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 }
 
-@media (min-width: 768px) {
-  .formActions {
-    grid-column: span 2 / span 2;
-  }
-}
-
+.clearButton,
 .cancelButton {
-  border-radius: 0.5rem;
   border: 1px solid #e5e5e5;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  border-radius: 0.5rem;
   background: white;
+  padding: 0.5rem 1rem;
   cursor: pointer;
 }
 
 .submitButton {
+  border: none;
   border-radius: 0.5rem;
   background: #ff9000;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
   color: white;
-  transition: filter 0.2s;
-  border: none;
+  padding: 0.5rem 1rem;
   cursor: pointer;
-}
-
-.submitButton:hover {
-  filter: brightness(1.1);
-}
-
-.submitButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* Read Modal */
@@ -172,22 +139,34 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 48rem;
-  max-height: 90vh;
+  max-width: 56rem;
+  max-height: calc(100vh - 5rem);
   border-radius: 1rem;
   border: 1px solid #e5e5e5;
   background: white;
-  padding: 1.5rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem;
   overflow-y: auto;
 }
 
 .readModalGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
-  font-size: 0.875rem;
-  color: #404040;
+  gap: 0.5rem;
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.secondRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .readModalMain {
@@ -198,15 +177,9 @@
 }
 
 .readModalMeta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  margin-top: 0.25rem;
   color: #525252;
-}
-
-.readModalMetaText {
-  font-weight: 500;
-  color: #262626;
+  line-height: 1.4;
 }
 
 .readModalDate {
@@ -215,53 +188,34 @@
 }
 
 .readModalContentText {
-  line-height: 1.5rem;
-  color: #404040;
+  margin-top: 0.25rem;
+  color: #525252;
+  line-height: 1.4;
   white-space: pre-wrap;
-}
-
-.readModalSidebar {
-  grid-column: span 1 / span 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.readModalType {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  text-align: right;
-  font-size: 0.75rem;
-  color: #737373;
 }
 
 .readModalActions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .deleteButton {
-  border-radius: 0.75rem;
-  background: #ef4444;
-  padding: 0.5rem 1rem;
-  color: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: filter 0.2s;
   border: none;
+  border-radius: 0.5rem;
+  background: #ef4444;
+  color: white;
+  padding: 0.5rem 1rem;
   cursor: pointer;
-}
-
-.deleteButton:hover {
-  filter: brightness(1.1);
+  font-weight: 500;
 }
 
 .editButton {
-  border-radius: 0.75rem;
   border: 1px solid #e5e5e5;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  border-radius: 0.5rem;
   background: white;
+  padding: 0.5rem 1rem;
   cursor: pointer;
+  font-weight: 500;
 }

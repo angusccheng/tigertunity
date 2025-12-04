@@ -145,104 +145,133 @@ export default function PostModal({ post, onClose, onDelete, canModify, myClubs,
           </div>
 
           <div className={styles.readModalGrid}>
-            <div className={styles.readModalMain}>
-              <div className={styles.readModalMeta}>
-                <p>
-                  <span className={styles.readModalMetaText}> <strong> Club: </strong> {post.club_name}</span>
-                </p>
-                <p>
-                  <span className={styles.readModalMetaText}> <strong> Officer: </strong> {
-                    post.officer_display_name 
+            {/* Top row: Club, Officer, Type, Club Type */}
+            <div className={styles.topRow}>
+              {post.club_name && (
+                <div>
+                  <strong>Club:</strong>
+                  <div className={styles.readModalMeta}>{post.club_name}</div>
+                </div>
+              )}
+              {post.officer_name && (
+                <div>
+                  <strong>Officer:</strong>
+                  <div className={styles.readModalMeta}>
+                    {post.officer_display_name 
                       ? `${post.officer_display_name} (${post.officer_name})`
-                      : post.officer_name
-                  }</span>
-                </p>
-              </div>
-              <p className={styles.readModalDate}>
-                <strong>Posted: </strong>{post.timestamp ? new Date(post.timestamp).toLocaleString([], {
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }) : ""}
-                {post.edit_status && post.edit_time && (
-                  <span style={{ marginLeft: '2rem' }}>
-                    <strong>Edited: </strong>{new Date(post.edit_time).toLocaleString([], {
+                      : post.officer_name}
+                  </div>
+                </div>
+              )}
+              {post.post_type && (
+                <div>
+                  <strong>Type:</strong>
+                  <div className={styles.readModalMeta}>{post.post_type}</div>
+                </div>
+              )}
+              {post.club_type && (
+                <div>
+                  <strong>Club Type:</strong>
+                  <div className={styles.readModalMeta}>{post.club_type}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Second row: Post time, Edit time, Event time/Deadline */}
+            <div className={styles.secondRow}>
+              {post.timestamp && (
+                <div>
+                  <strong>Posted:</strong>
+                  <div className={styles.readModalMeta}>
+                    {new Date(post.timestamp).toLocaleString([], {
                       year: "numeric",
                       month: "2-digit",
                       day: "2-digit",
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
-                  </span>
-                )}
-              </p>
+                  </div>
+                </div>
+              )}
+              {post.edit_status && post.edit_time && (
+                <div>
+                  <strong>Edited:</strong>
+                  <div className={styles.readModalMeta}>
+                    {new Date(post.edit_time).toLocaleString([], {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              )}
               {post.post_type !== "Application" && (post.event_starttime && post.event_endtime) && (
-                <p className={styles.readModalDate}>
-                  <strong>Event Time: </strong>
-                  {post.event_starttime
-                    ? new Date(post.event_starttime).toLocaleString(undefined, {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                    : "?"}
-                  {post.event_endtime
-                    ? " – " + new Date(post.event_endtime).toLocaleString(undefined, {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                    : ""}
-                </p>
+                <div>
+                  <strong>Event Time:</strong>
+                  <div className={styles.readModalMeta}>
+                    {post.event_starttime
+                      ? new Date(post.event_starttime).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      : "?"}
+                    {post.event_endtime
+                      ? " – " + new Date(post.event_endtime).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      : ""}
+                  </div>
+                </div>
               )}
-              {post.post_type === "Application" && (post.event_endtime) && (
-                <p className={styles.readModalDate}>
-                  <strong>Deadline: </strong>
-                  {post.event_endtime
-                    ? new Date(post.event_endtime).toLocaleString(undefined, {
+              {post.post_type === "Application" && post.event_endtime && (
+                <div>
+                  <strong>Deadline:</strong>
+                  <div className={styles.readModalMeta}>
+                    {new Date(post.event_endtime).toLocaleString(undefined, {
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })
-                    : "?"}
-                </p>
+                    })}
+                  </div>
+                </div>
               )}
-              <p className={styles.readModalContentText}>{post.post_content}</p>
             </div>
 
-            <aside className={styles.readModalSidebar}>
-              <div className={styles.readModalType}>
-                <p><strong>Type: </strong>{post.post_type}</p>
-              </div>
+            {/* Content section */}
+            <div>
+              <strong>About:</strong>
+              <div className={styles.readModalContentText}>{post.post_content}</div>
+            </div>
+
+            {canModify && (
               <div className={styles.readModalActions}>
-                {canModify && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleEditClick}
-                      className={styles.editButton}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(post)}
-                      className={styles.deleteButton}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={handleEditClick}
+                  className={styles.editButton}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(post)}
+                  className={styles.deleteButton}
+                >
+                  Delete
+                </button>
               </div>
-            </aside>
+            )}
           </div>
         </div>
       )}

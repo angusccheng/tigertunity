@@ -12,7 +12,7 @@ export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
   const [myClubs, setMyClubs] = useState([]);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const [tab, setTab] = useState("mine"); // 'mine' | 'all'; default to mine
+  const [tab, setTab] = useState("all"); // 'mine' | 'all'; default to all
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editingClub, setEditingClub] = useState(null);
@@ -451,22 +451,22 @@ export default function ExploreClubsPage() {
         </div>
 
         <div className={styles.tabs} role="tablist">
-          <button
-            role="tab"
-            aria-selected={tab === "mine"}
-            className={tab === "mine" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-            onClick={() => setTab("mine")}
-          >
-            My Clubs
-          </button>
-          <button
-            role="tab"
-            aria-selected={tab === "all"}
-            className={tab === "all" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-            onClick={() => setTab("all")}
-          >
-            All Clubs
-          </button>
+            <button
+              role="tab"
+              aria-selected={tab === "all"}
+              className={tab === "all" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setTab("all")}
+            >
+              All Clubs
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === "mine"}
+              className={tab === "mine" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setTab("mine")}
+            >
+              My Clubs
+            </button>
         </div>
 
         {tab === "mine" ? (

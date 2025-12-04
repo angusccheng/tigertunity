@@ -490,3 +490,16 @@ def exists_club_request(user_id, club_id):
     """Check if a club request already exists for user and club"""
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(ClubRequest).filter(ClubRequest.user_id == user_id, ClubRequest.club_id == club_id).first() is not None
+
+def delete_conversation(conversation_id):
+    """Delete a conversation and all its messages by conversation_id"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        # First delete all messages in the conversation
+        session.query(DMMessage).filter(DMMessage.conversation_id == conversation_id).delete()
+        # Then delete the conversation itself
+        conv = session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conv is None:
+            return False
+        session.delete(conv)
+        session.commit()
+        return True

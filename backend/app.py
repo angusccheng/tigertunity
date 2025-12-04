@@ -1269,3 +1269,20 @@ def admin_reject_club_request(request_id):
         return flask.jsonify({'message': 'Rejected'})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/conversations/<int:conversation_id>', methods=['DELETE'])
+@flask_jwt_extended.jwt_required()
+def admin_delete_conversation(conversation_id):
+    """Delete a conversation and all its messages."""
+    try:
+        current_user = flask_jwt_extended.get_jwt_identity()
+        admin_officer = database.get_member_by_name(current_user)
+        if admin_officer is None or not getattr(admin_officer, 'admin_status', False):
+            return flask.jsonify({'error': 'Unauthorized'}), 403
+
+        ok = database.delete_conversation(conversation_id)
+        if not ok:
+            return flask.jsonify({'error': 'Conversation not found'}), 404
+        return flask.jsonify({'message': 'Conversation deleted'})
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500

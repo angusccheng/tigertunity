@@ -4,7 +4,7 @@ import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
-import { fetchAdminClubRequests } from "../features/adminApi.js";
+import { fetchAdminClubRequests, deleteConversation } from "../features/adminApi.js";
 import { fetchConversations, fetchUsers } from "../features/dmApi.js"; // ---------------------------- // DM API imports
 import DMMessenger from "../components/DMMessenger.jsx";
 import ClubRequestCard from "../components/ClubRequestCard.jsx";
@@ -150,20 +150,39 @@ export default function ProfilePage() {
   // ----------------------------
   // Load DM conversations (updated to use dmApi.js)
   // ----------------------------
-  useEffect(() => {
+  const loadConversations = async () => {
     if (!user) return;
-
-    async function loadConvos() {
-      try {
-        const data = await fetchConversations(); // ✔ replaced old fetch with authenticated DM API
-        setConversations(data);
-      } catch (err) {
-        console.error("Failed to load DM list:", err);
-      }
+    try {
+      const data = await fetchConversations();
+      setConversations(data);
+    } catch (err) {
+      console.error("Failed to load DM list:", err);
     }
+  };
 
-    loadConvos();
+  useEffect(() => {
+    loadConversations();
   }, [user]);
+
+  // ----------------------------
+  // Delete conversation (admin only)
+  // ----------------------------
+  const handleDeleteConversation = async (conversationId, otherUser) => {
+    if (!window.confirm(`Delete conversation with ${otherUser}? This will permanently remove all messages.`)) {
+      return;
+    }
+    
+    try {
+      await deleteConversation(conversationId);
+      await loadConversations(); // Refresh the list
+      // If the deleted conversation was active, close the messenger
+      if (activeDM === otherUser) {
+        setActiveDM(null);
+      }
+    } catch (err) {
+      alert("Failed to delete conversation: " + err.message);
+    }
+  };
 
   // ----------------------------
   // Load list of all users (updated to use dmApi.js)
@@ -360,19 +379,29 @@ export default function ProfilePage() {
                 ) : (
                   <div className={styles.dmList}>
                     {conversations.map((c) => (
-                      <button
-                        key={c.conversation_id}
-                        className={styles.dmItem}
-                        onClick={() => setActiveDM(c.other_user)}
-                      >
-                        <div className={styles.dmAvatar} />
-                        <div className={styles.dmTextBlock}>
-                          <p className={styles.dmName}>{c.other_user}</p>
-                          <p className={styles.dmPreview}>
-                            {c.last_message || "No messages yet"}
-                          </p>
-                        </div>
-                      </button>
+                      <div key={c.conversation_id} className={styles.dmItemWrapper}>
+                        <button
+                          className={styles.dmItem}
+                          onClick={() => setActiveDM(c.other_user)}
+                        >
+                          <div className={styles.dmAvatar} />
+                          <div className={styles.dmTextBlock}>
+                            <p className={styles.dmName}>{c.other_user}</p>
+                            <p className={styles.dmPreview}>
+                              {c.last_message || "No messages yet"}
+                            </p>
+                          </div>
+                        </button>
+                        {isAdmin && (
+                          <button
+                            className={styles.deleteConvButton}
+                            onClick={() => handleDeleteConversation(c.conversation_id, c.other_user)}
+                            title="Delete conversation"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -417,6 +446,7 @@ export default function ProfilePage() {
         <DMMessenger
           otherUser={activeDM}
           onClose={() => setActiveDM(null)}
+          onConversationUpdate={loadConversations}
         />
       )}
 
@@ -442,19 +472,29 @@ export default function ProfilePage() {
               {userList.length === 0 ? (
                 <p>Loading…</p>
               ) : (
-                userList.map((u) => (
-                  <button
-                    key={u}
-                    className={styles.userRow}
-                    onClick={() => {
-                      setActiveDM(u);
-                      setShowUserPicker(false);
-                    }}
-                  >
-                    <div className={styles.dmAvatarSmall} />
-                    {u}
-                  </button>
-                ))
+                (() => {
+                  // Filter out users we already have conversations with
+                  const conversationUsers = new Set(conversations.map(c => c.other_user));
+                  const availableUsers = userList.filter(u => !conversationUsers.has(u));
+                  
+                  if (availableUsers.length === 0) {
+                    return <p>No new users available to message.</p>;
+                  }
+                  
+                  return availableUsers.map((u) => (
+                    <button
+                      key={u}
+                      className={styles.userRow}
+                      onClick={() => {
+                        setActiveDM(u);
+                        setShowUserPicker(false);
+                      }}
+                    >
+                      <div className={styles.dmAvatarSmall} />
+                      {u}
+                    </button>
+                  ));
+                })()
               )}
             </div>
           </div>

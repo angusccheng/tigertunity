@@ -41,3 +41,13 @@ export async function rejectClubRequest(requestId) {
     });
     return await handleResponse(r);
 }
+
+export async function deleteConversation(conversationId) {
+    const r = await fetch(`${API_BASE}/api/admin/conversations/${conversationId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${getAccess()}`,
+        },
+    });
+    return await handleResponse(r);
+}

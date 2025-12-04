@@ -537,6 +537,13 @@
   overflow-y: auto;
 }
 
+.dmItemWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
 .dmItem {
   display: flex;
   align-items: center;
@@ -554,7 +561,26 @@
 .dmItem:hover {
   background: #f5f5f5;
   border-color: #d4d4d4;
-  transform: translateY(-1px);
+}
+
+.deleteConvButton {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.deleteConvButton:hover {
+  background: #dc2626;
 }
 
 .dmAvatar {
@@ -746,5 +772,5 @@
 
 /* Fix overlay dim + center modal properly */
 .modalOverlay {
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }

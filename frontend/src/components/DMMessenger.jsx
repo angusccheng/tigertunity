@@ -6,7 +6,7 @@ import {
   sendDMMessageAPI,
 } from "../features/dmApi";
 
-export default function DMMessenger({ otherUser, onClose }) {
+export default function DMMessenger({ otherUser, onClose, onConversationUpdate }) {
   const currentUser = getUser();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -53,6 +53,11 @@ export default function DMMessenger({ otherUser, onClose }) {
       // 2. Append ONLY the backend-confirmed message
       // prevents double-flicker
       setMessages((prev) => [...prev, saved]);
+
+      // 3. Notify parent to refresh conversations list
+      if (onConversationUpdate) {
+        onConversationUpdate();
+      }
 
     } catch (err) {
       console.error("Failed to send DM:", err);

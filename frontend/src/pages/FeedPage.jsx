@@ -5,6 +5,7 @@ import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
+import ParsedPostCard from "../components/ParsedPostCard.jsx";
 
 // Post type options (extended with Workshop, Other)
 const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
@@ -623,22 +624,27 @@ export default function FeedPage() {
               No posts match your search for "{searchQuery}"
             </div>
           ) : (
-            displayedPosts.map((p) => (
-              <PostCard
-                key={p.post_id}
-                post={p}
-                onSaveToggle={(e) => savedPosts.has(p.post_id)
-                  ? handleUnsavePost(p.post_id, e)
-                  : handleSavePost(p.post_id, e)}
-                isSaved={savedPosts.has(p.post_id)}
-                showSaveButton={!!user}
-                myClubs={myClubs}
-                onDelete={handleDelete}
-                onUpdatePost={handleUpdatePost}
-                submitting={submitting}
-              />
-            ))
-          )}
+            displayedPosts.map((p) =>
+              p.source === "parsed" ? (
+                <ParsedPostCard key={p.post_id} parsed={p} />
+              ) : (
+                <PostCard
+                  key={p.post_id}
+                  post={p}
+                  onSaveToggle={(e) =>
+                    savedPosts.has(p.post_id)
+                      ? handleUnsavePost(p.post_id, e)
+                      : handleSavePost(p.post_id, e)
+                  }
+                  isSaved={savedPosts.has(p.post_id)}
+                  showSaveButton={!!user}
+                  myClubs={myClubs}
+                  onDelete={handleDelete}
+                  onUpdatePost={handleUpdatePost}
+                  submitting={submitting}
+                />
+              ))
+            )}
         </section>
       </main>
 

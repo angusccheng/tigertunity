@@ -419,7 +419,6 @@ export default function ProfilePage() {
                           className={styles.dmItem}
                           onClick={() => setActiveDM(c.other_user)}
                         >
-                          <div className={styles.dmAvatar} />
                           <div className={styles.dmTextBlock}>
                             <p className={styles.dmName}>{c.other_user}</p>
                             <p className={styles.dmPreview}>
@@ -536,7 +535,6 @@ export default function ProfilePage() {
                         setShowUserPicker(false);
                       }}
                     >
-                      <div className={styles.dmAvatarLarge} />
                       <div className={styles.userTileName}>{u}</div>
                     </button>
                   ));

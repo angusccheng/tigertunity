@@ -3,11 +3,10 @@ import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
 const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 import Header from "../components/Header.jsx";
-import PostCard from "../components/PostCard.jsx";
+import ClubCard from "../components/ClubCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
 import profileStyles from "./ProfilePage.module.css";
-import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub } from "../features/clubsApi.js";
-import { fetchPostsByClub } from "../features/postApi.js";
+import { fetchAllClubs, fetchMyOfficerClubs, createClub, deleteClub, updateClub, requestOfficerForClub, fetchMyClubRequests, leaveClub, fetchMySavedClubs, saveClub, unsaveClub } from "../features/clubsApi.js";
 
 export default function ExploreClubsPage() {
   const [allClubs, setAllClubs] = useState([]);
@@ -21,15 +20,14 @@ export default function ExploreClubsPage() {
   const [form, setForm] = useState({ club_name: "", club_type: "", club_profile: "" });
   const [editForm, setEditForm] = useState({ club_type: "", club_profile: "" });
   const [error, setError] = useState("");
-  const [selectedClub, setSelectedClub] = useState(null);
-  const [clubPosts, setClubPosts] = useState([]);
-  const [clubPostsLoading, setClubPostsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [requesting, setRequesting] = useState(false);
+  const [selectedClubForRequest, setSelectedClubForRequest] = useState(null);
   const [requestNotes, setRequestNotes] = useState("");
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [myRequests, setMyRequests] = useState([]);
+  const [savedClubs, setSavedClubs] = useState([]);
   // Club type filters (all selected by default)
   const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
   // Search state
@@ -44,7 +42,12 @@ export default function ExploreClubsPage() {
 
   useEffect(() => {
     (async () => {
-      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
+      const [all, mineRaw, myReqs, savedClubsRaw] = await Promise.all([
+        fetchAllClubs(),
+        fetchMyOfficerClubs(),
+        fetchMyClubRequests(),
+        currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
+      ]);
       setAllClubs(all);
       // Capture any dynamic club types not in the static list and add them to active filters
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
@@ -59,6 +62,7 @@ export default function ExploreClubsPage() {
         setMyClubs(mineRaw || []);
       }
       setMyRequests(Array.isArray(myReqs) ? myReqs : []);
+      setSavedClubs(Array.isArray(savedClubsRaw) ? savedClubsRaw : []);
     })();
   }, []);
 
@@ -67,11 +71,10 @@ export default function ExploreClubsPage() {
       if (e.key === "Escape") {
         if (creating) setCreating(false);
         if (editing) setEditing(false);
-        if (selectedClub) handleCloseDetails();
         if (selectedPost) setSelectedPost(null);
       }
     }
-    if (creating || editing || selectedClub || selectedPost) {
+    if (creating || editing || selectedPost) {
       document.addEventListener("keydown", onKeyDown);
       // move focus to close button on open
       setTimeout(() => {
@@ -85,41 +88,7 @@ export default function ExploreClubsPage() {
         document.body.style.overflow = overflow;
       };
     }
-  }, [creating, editing, selectedClub, selectedPost]);
-
-  function openDetails(c, e) {
-    lastOpenerRef.current = e?.currentTarget || null;
-    setSelectedClub(c);
-  }
-
-  function handleCloseDetails() {
-    setSelectedClub(null);
-    setClubPosts([]);
-    setClubPostsLoading(false);
-    setSelectedPost(null);
-    if (lastOpenerRef.current) {
-      try { lastOpenerRef.current.focus(); } catch { }
-    }
-  }
-
-  useEffect(() => {
-    async function loadClubPosts() {
-      if (!selectedClub) return;
-      setClubPostsLoading(true);
-      try {
-        const posts = await fetchPostsByClub(selectedClub.club_id);
-        // show most recent first
-        const sorted = [...posts].sort((a, b) => new Date(b.post_time || b.timestamp || 0) - new Date(a.post_time || a.timestamp || 0));
-        setClubPosts(sorted);
-      } catch (e) {
-        console.error('Failed to load club posts', e);
-        setClubPosts([]);
-      } finally {
-        setClubPostsLoading(false);
-      }
-    }
-    loadClubPosts();
-  }, [selectedClub]);
+  }, [creating, editing, selectedPost]);
 
   async function onCreate(e) {
     e.preventDefault();
@@ -317,7 +286,12 @@ export default function ExploreClubsPage() {
 
   async function refreshClubs() {
     try {
-      const [all, mineRaw, myReqs] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs(), fetchMyClubRequests()]);
+      const [all, mineRaw, myReqs, savedClubsRaw] = await Promise.all([
+        fetchAllClubs(),
+        fetchMyOfficerClubs(),
+        fetchMyClubRequests(),
+        currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
+      ]);
       setAllClubs(all);
       const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
       if (dynamicTypes.length) {
@@ -331,6 +305,7 @@ export default function ExploreClubsPage() {
         setMyClubs(mineRaw || []);
       }
       setMyRequests(Array.isArray(myReqs) ? myReqs : []);
+      setSavedClubs(Array.isArray(savedClubsRaw) ? savedClubsRaw : []);
     } catch (e) {
       console.error('Failed to refresh clubs', e);
     }
@@ -359,6 +334,30 @@ export default function ExploreClubsPage() {
       setError(err.message || "Failed to update club");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleToggleSaveClub(clubId, e) {
+    if (e) e.stopPropagation();
+    if (!currentUser) return;
+
+    const isSaved = savedClubs.some(c => c.club_id === clubId);
+
+    try {
+      if (isSaved) {
+        await unsaveClub(currentUser, clubId);
+        setSavedClubs(prev => prev.filter(c => c.club_id !== clubId));
+      } else {
+        await saveClub(currentUser, clubId);
+        // Add the club to saved clubs
+        const club = allClubs.find(c => c.club_id === clubId);
+        if (club) {
+          setSavedClubs(prev => [...prev, club]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle save club:', err);
+      alert(`Failed to ${isSaved ? 'unsave' : 'save'} club: ${err.message}`);
     }
   }
 
@@ -477,24 +476,24 @@ export default function ExploreClubsPage() {
             </div>
             <div className={styles.grid}>
               {displayMyClubs.map((c) => (
-                <div
-                  className={styles.clubCard}
+                <ClubCard
                   key={`mine-${c.club_id}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => openDetails(c, e)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                  aria-label={`View details for ${c.club_name || 'club'}`}
-                >
-                  {c.club_type && (
-                    <div className={styles.clubTypeTag}>{c.club_type}</div>
-                  )}
-                  <div className={styles.clubInfo}>
-                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                  </div>
-                </div>
-
+                  club={c}
+                  savedClubs={savedClubs}
+                  onToggleSave={handleToggleSaveClub}
+                  myClubs={myClubs}
+                  myRequests={myRequests}
+                  onEdit={handleEditClick}
+                  onLeave={onLeaveClub}
+                  onDelete={onDeleteClub}
+                  onRequestOfficer={() => {
+                    setSelectedClubForRequest(c);
+                    setRequesting(true);
+                    setRequestNotes("");
+                    setRequestError("");
+                  }}
+                  onPostClick={setSelectedPost}
+                />
               ))}
 
               <button type="button" className={styles.addCard} onClick={() => setCreating(true)}>
@@ -509,37 +508,28 @@ export default function ExploreClubsPage() {
                   <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>No requested clubs.</div>
                 ) : (
                   myRequests.map((r) => (
-                    <div
-                      className={styles.clubCard}
+                    <ClubCard
                       key={`req-${r.request_id}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => openDetails({
+                      club={{
                         club_id: r.club_id,
                         club_name: r.club_name,
                         club_profile: r.club_profile,
                         club_type: r.club_type
-                      }, e)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault(); openDetails({
-                            club_id: r.club_id,
-                            club_name: r.club_name,
-                            club_profile: r.club_profile,
-                            club_type: r.club_type
-                          }, e);
-                        }
                       }}
-                      aria-label={`View details for requested club ${r.club_name || 'club'}`}
-                    >
-                      {r.club_type && (
-                        <div className={styles.clubTypeTag}>{r.club_type}</div>
-                      )}
-                      <div className={styles.clubInfo}>
-                        <div className={styles.clubName}>{r.club_name || "Club Name"}</div>
-                        <div className={styles.clubDescription}>{r.club_profile || "No description available."}</div>
-                      </div>
-                    </div>
+                      savedClubs={savedClubs}
+                      onToggleSave={handleToggleSaveClub}
+                      myClubs={myClubs}
+                      myRequests={myRequests}
+                      onEdit={handleEditClick}
+                      onLeave={onLeaveClub}
+                      onDelete={onDeleteClub}
+                      onRequestOfficer={() => {
+                        setRequesting(true);
+                        setRequestNotes("");
+                        setRequestError("");
+                      }}
+                      onPostClick={setSelectedPost}
+                    />
                   ))
                 )}
               </div>
@@ -550,26 +540,57 @@ export default function ExploreClubsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>All Clubs</h2>
             </div>
-            <div className={styles.grid}>
-              {displayAllClubs.map((c) => (
-                <div
-                  className={styles.clubCard}
-                  key={c.club_id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => openDetails(c, e)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(c, e); } }}
-                  aria-label={`View details for ${c.club_name || 'club'}`}
-                >
-                  {c.club_type && (
-                    <div className={styles.clubTypeTag}>{c.club_type}</div>
-                  )}
-                  <div className={styles.clubInfo}>
-                    <div className={styles.clubName}>{c.club_name || "Club Name"}</div>
-                    <div className={styles.clubDescription}>{c.club_profile || "No description available."}</div>
-                  </div>
+            {/* Saved Clubs Section */}
+            {savedClubs.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Saved Clubs</h2>
+                <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                  {savedClubs.map((c) => (
+                    <ClubCard
+                      key={`saved-${c.club_id}`}
+                      club={c}
+                      savedClubs={savedClubs}
+                      onToggleSave={handleToggleSaveClub}
+                      myClubs={myClubs}
+                      myRequests={myRequests}
+                      onEdit={handleEditClick}
+                      onLeave={onLeaveClub}
+                      onDelete={onDeleteClub}
+                      onRequestOfficer={() => {
+                        setRequesting(true);
+                        setRequestNotes("");
+                        setRequestError("");
+                      }}
+                      onPostClick={setSelectedPost}
+                    />
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+            {/* Other Clubs Section */}
+            <div style={{ marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Other Clubs</h2>
+              <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                {displayAllClubs.filter(c => !savedClubs.some(sc => sc.club_id === c.club_id)).map((c) => (
+                  <ClubCard
+                    key={c.club_id}
+                    club={c}
+                    savedClubs={savedClubs}
+                    onToggleSave={handleToggleSaveClub}
+                    myClubs={myClubs}
+                    myRequests={myRequests}
+                    onEdit={handleEditClick}
+                    onLeave={onLeaveClub}
+                    onDelete={onDeleteClub}
+                    onRequestOfficer={() => {
+                      setRequesting(true);
+                      setRequestNotes("");
+                      setRequestError("");
+                    }}
+                    onPostClick={setSelectedPost}
+                  />
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -644,189 +665,6 @@ export default function ExploreClubsPage() {
         </div>
       )}
 
-      {selectedClub && (
-        <div
-          className={styles.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="club-details-title"
-          style={{ overflowY: 'auto' }}
-        >
-          <div className={styles.modalBackdrop} onClick={handleCloseDetails} />
-          <div
-            className={styles.modalContent}
-            style={{ maxHeight: 'calc(100vh - 5rem)', overflowY: 'auto' }}
-          >
-            <div className={styles.modalHeader}>
-              <h3 id="club-details-title" className={styles.modalTitle}>{selectedClub.club_name || 'Club Details'}</h3>
-              <button ref={closeBtnRef} className={styles.closeButton} onClick={handleCloseDetails} aria-label="Close">✕</button>
-            </div>
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              {selectedClub.club_type && (
-                <div><strong>Type:</strong> {selectedClub.club_type}</div>
-              )}
-              <div>
-                <strong>About:</strong>
-                <div style={{ marginTop: '0.25rem', color: '#525252', lineHeight: 1.4 }}>
-                  {selectedClub.club_profile || 'No description available.'}
-                </div>
-              </div>
-              {selectedClub.officer_names && selectedClub.officer_names.length > 0 && (
-                <div>
-                  <strong>Officers:</strong>
-                  <div style={{ marginTop: '0.25rem', color: '#525252' }}>
-                    {selectedClub.officer_names.join(', ')}
-                  </div>
-                </div>
-              )}
-
-              {/* Club Posts */}
-              <div className={styles.postsCard}>
-                <h4 className={styles.postsTitle}>Club Posts</h4>
-                <div className={styles.postsList}>
-                  {clubPostsLoading ? (
-                    <p className={styles.postsLoading}>Loading…</p>
-                  ) : clubPosts.length === 0 ? (
-                    <p className={styles.postsEmpty}>No posts yet for this club.</p>
-                  ) : (
-                    clubPosts.map(p => (
-                      <PostCard
-                        key={p.post_id}
-                        post={p}
-                        onClick={() => setSelectedPost(p)}
-                        showSaveButton={false}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-              {/* Room for actions: Save/Join, View Posts, etc. */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {myClubs.some(c => c.club_id === selectedClub.club_id) && (
-                  <>
-                    <button
-                      onClick={() => handleEditClick(selectedClub)}
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => onLeaveClub(selectedClub, e)}
-                      style={{
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        background: '#f59e0b',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Leave Club
-                    </button>
-                    <button
-                      onClick={(e) => onDeleteClub(selectedClub, e)}
-                      style={{
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        background: '#ef4444',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-                {!myClubs.some(c => c.club_id === selectedClub.club_id) && (
-                  myRequests.some(r => r.club_id === selectedClub.club_id) ? (
-                    <button
-                      disabled
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: '#f3f4f6',
-                        color: '#9ca3af',
-                        padding: '0.5rem 1rem',
-                        cursor: 'not-allowed',
-                        fontWeight: 500
-                      }}
-                    >
-                      Already Requested
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => { setRequesting(true); setRequestNotes(""); setRequestError(""); }}
-                      style={{
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '0.5rem',
-                        background: 'white',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      Request to be an officer
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedPost && (
-        <div className={profileStyles.modalOverlay}>
-          <div className={profileStyles.modalBackdrop} onClick={() => setSelectedPost(null)} />
-          <div className={profileStyles.readModalContent}>
-            <div className={profileStyles.modalHeader}>
-              <h2 className={profileStyles.modalTitle}>{selectedPost.post_title}</h2>
-              <button
-                type="button"
-                onClick={() => setSelectedPost(null)}
-                className={profileStyles.closeButton}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className={profileStyles.readModalGrid}>
-              <div className={profileStyles.readModalMain}>
-                <div className={profileStyles.readModalMeta}>
-                  <p>
-                    <span className={profileStyles.readModalMetaText}> <strong> Club: </strong> {selectedPost.club_name}</span>
-                  </p>
-                  <p>
-                    <span className={profileStyles.readModalMetaText}> <strong> Officer: </strong> {selectedPost.officer_name}</span>
-                  </p>
-                </div>
-                <p className={profileStyles.readModalDate}>
-                  {selectedPost.timestamp || selectedPost.post_time ? new Date(selectedPost.timestamp || selectedPost.post_time).toLocaleString() : ""}
-                </p>
-                <p className={profileStyles.readModalContentText}>{selectedPost.post_description || selectedPost.post_content || ""}</p>
-              </div>
-
-              <aside className={profileStyles.readModalSidebar}>
-                <div className={profileStyles.readModalType}>
-                  <p>Type:</p>
-                  <p className={profileStyles.readModalTypeValue}>{selectedPost.post_type}</p>
-                </div>
-              </aside>
-            </div>
-          </div>
-        </div>
-      )}
-
       {editing && editingClub && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalBackdrop} onClick={() => setEditing(false)} />
@@ -865,7 +703,7 @@ export default function ExploreClubsPage() {
         </div>
       )}
 
-      {requesting && selectedClub && (
+      {requesting && selectedClubForRequest && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modalBackdrop} onClick={() => setRequesting(false)} />
           <div className={styles.modalContent}>
@@ -875,7 +713,7 @@ export default function ExploreClubsPage() {
             </div>
             <div className={styles.form}>
               <div style={{ marginBottom: '0.5rem' }}>
-                You are requesting to be an officer of <strong>{selectedClub.club_name}</strong>.
+                You are requesting to be an officer of <strong>{selectedClubForRequest.club_name}</strong>.
               </div>
               <label className={styles.formFieldFull}>
                 <span className={styles.formLabel}>Notes (optional)</span>
@@ -898,7 +736,7 @@ export default function ExploreClubsPage() {
                     setRequestSubmitting(true);
                     setRequestError("");
                     try {
-                      await requestOfficerForClub(selectedClub.club_id, requestNotes);
+                      await requestOfficerForClub(selectedClubForRequest.club_id, requestNotes);
                       alert("Request submitted");
                       await refreshClubs();
                       setRequesting(false);

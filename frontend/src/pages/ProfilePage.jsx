@@ -4,9 +4,14 @@ import { getUser } from "../auth.js";
 import { fetchSavedPosts, unsavePost, fetchNotepad, updateNotepad, fetchDisplayName, updateDisplayName, fetchPreferences, updatePreferences } from "../features/postApi.js";
 import styles from "./ProfilePage.module.css";
 import PostCard from "../components/PostCard.jsx";
-import { fetchAdminClubRequests, approveClubRequest, rejectClubRequest } from "../features/adminApi.js";
+import { fetchAdminClubRequests, deleteConversation } from "../features/adminApi.js";
 import { fetchConversations, fetchUsers } from "../features/dmApi.js"; // ---------------------------- // DM API imports
 import DMMessenger from "../components/DMMessenger.jsx";
+import ClubRequestCard from "../components/ClubRequestCard.jsx";
+
+// Constants for preference options
+const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
+const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
 
 export default function ProfilePage() {
   const user = getUser();
@@ -21,12 +26,12 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(true);
   const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
-  const [preferences, setPreferences] = useState(new Set());
+  const [postTypePreferences, setPostTypePreferences] = useState(new Set());
+  const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [adminRequests, setAdminRequests] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState(null);
 
   // DM Inbox
   const [conversations, setConversations] = useState([]);
@@ -101,8 +106,10 @@ export default function ProfilePage() {
       }
       try {
         const resp = await fetchPreferences(user);
-        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
-        setPreferences(new Set(arr));
+        const postTypes = Array.isArray(resp.post_types) ? resp.post_types : [];
+        const clubTypes = Array.isArray(resp.club_types) ? resp.club_types : [];
+        setPostTypePreferences(new Set(postTypes));
+        setClubTypePreferences(new Set(clubTypes));
       } catch (err) {
         console.error("Failed to load preferences:", err);
       } finally {
@@ -150,20 +157,39 @@ export default function ProfilePage() {
   // ----------------------------
   // Load DM conversations (updated to use dmApi.js)
   // ----------------------------
-  useEffect(() => {
+  const loadConversations = async () => {
     if (!user) return;
-
-    async function loadConvos() {
-      try {
-        const data = await fetchConversations(); // ✔ replaced old fetch with authenticated DM API
-        setConversations(data);
-      } catch (err) {
-        console.error("Failed to load DM list:", err);
-      }
+    try {
+      const data = await fetchConversations();
+      setConversations(data);
+    } catch (err) {
+      console.error("Failed to load DM list:", err);
     }
+  };
 
-    loadConvos();
+  useEffect(() => {
+    loadConversations();
   }, [user]);
+
+  // ----------------------------
+  // Delete conversation (admin only)
+  // ----------------------------
+  const handleDeleteConversation = async (conversationId, otherUser) => {
+    if (!window.confirm(`Delete conversation with ${otherUser}? This will permanently remove all messages.`)) {
+      return;
+    }
+    
+    try {
+      await deleteConversation(conversationId);
+      await loadConversations(); // Refresh the list
+      // If the deleted conversation was active, close the messenger
+      if (activeDM === otherUser) {
+        setActiveDM(null);
+      }
+    } catch (err) {
+      alert("Failed to delete conversation: " + err.message);
+    }
+  };
 
   // ----------------------------
   // Load list of all users (updated to use dmApi.js)
@@ -219,13 +245,24 @@ export default function ProfilePage() {
     }
   }
 
-  async function togglePreference(type) {
+  async function togglePostTypePreference(type) {
     if (!user) return;
-    setPreferences(prev => {
+    setPostTypePreferences(prev => {
       const next = new Set(prev);
       if (next.has(type)) next.delete(type); else next.add(type);
       // Fire-and-forget save
-      updatePreferences(user, Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
+      updatePreferences(user, Array.from(next), Array.from(clubTypePreferences)).catch((e) => console.error("Failed to save preferences", e));
+      return next;
+    });
+  }
+
+  async function toggleClubTypePreference(type) {
+    if (!user) return;
+    setClubTypePreferences(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      // Fire-and-forget save
+      updatePreferences(user, Array.from(postTypePreferences), Array.from(next)).catch((e) => console.error("Failed to save preferences", e));
       return next;
     });
   }
@@ -302,14 +339,30 @@ export default function ProfilePage() {
               {/* Preferences Section */}
               <div className={styles.bioSection}>
                 <h3 className={styles.bioTitle}>My Preferences</h3>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#171717', marginTop: '0.75rem', marginBottom: '0.5rem' }}>Post Types</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {POST_TYPES.map((t) => (
                     <button
                       key={t}
                       type="button"
-                      onClick={() => togglePreference(t)}
+                      onClick={() => togglePostTypePreference(t)}
                       disabled={prefsLoading}
-                      className={preferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                      className={postTypePreferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#171717', marginTop: '1rem', marginBottom: '0.5rem' }}>Club Types</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {CLUB_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => toggleClubTypePreference(t)}
+                      disabled={prefsLoading}
+                      className={clubTypePreferences.has(t) ? `${styles.prefTag} ${styles.prefActive}` : `${styles.prefTag} ${styles.prefInactive}`}
                     >
                       {t}
                     </button>
@@ -327,76 +380,15 @@ export default function ProfilePage() {
                     <div className={styles.bioDisplay}>No club requests found.</div>
                   ) : (
                     <div className={styles.adminRequestsList}>
-                      {adminRequests.map((req) => {
-                        const UserDisplay = req.display_name
-                          ? `${req.display_name} (${req.user_name})`
-                          : (req.user_name);
-                        return (
-                          <div key={req.request_id} className={styles.requestCard}>
-                            <button
-                              type="button"
-                              className={styles.requestButton}
-                              onClick={() => setSelectedRequest(req)}
-                            >
-                              <div className={styles.requestTitle}>Club Officer Request</div>
-                              <div className={styles.requestHeader}>
-                                <div className={styles.requestInfo}>
-                                  <strong>User:</strong> {UserDisplay}
-                                  <strong>Club:</strong> {req.club_name}
-                                  <strong>Requested:</strong> {new Date(req.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                </div>
-                              </div>
-                              {req.notes && (
-                                <div className={styles.requestNotes}>
-                                  <strong>Notes:</strong> {req.notes}
-                                </div>
-                              )}
-                            </button>
-                            <div className={styles.requestActions}>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const userDisplay = req.display_name
-                                    ? `${req.display_name} (${req.user_name})`
-                                    : req.user_name;
-                                  const clubName = req.club_name || req.club_id;
-                                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
-                                  if (!ok) return;
-                                  try {
-                                    await approveClubRequest(req.request_id);
-                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
-                                  } catch (err) {
-                                    alert(`Failed to approve: ${err.message}`);
-                                  }
-                                }}
-                                className={styles.approveButton}
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const userDisplay = req.display_name
-                                    ? `${req.display_name} (${req.user_name})`
-                                    : req.user_name;
-                                  const clubName = req.club_name || req.club_id;
-                                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}? This will permanently delete their request.`);
-                                  if (!ok) return;
-                                  try {
-                                    await rejectClubRequest(req.request_id);
-                                    setAdminRequests(prev => prev.filter(r => r.request_id !== req.request_id));
-                                  } catch (err) {
-                                    alert(`Failed to reject: ${err.message}`);
-                                  }
-                                }}
-                                className={styles.rejectButton}
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {adminRequests.map((req) => (
+                        <ClubRequestCard
+                          key={req.request_id}
+                          request={req}
+                          onRequestUpdate={(requestId) => {
+                            setAdminRequests(prev => prev.filter(r => r.request_id !== requestId));
+                          }}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -421,19 +413,29 @@ export default function ProfilePage() {
                 ) : (
                   <div className={styles.dmList}>
                     {conversations.map((c) => (
-                      <button
-                        key={c.conversation_id}
-                        className={styles.dmItem}
-                        onClick={() => setActiveDM(c.other_user)}
-                      >
-                        <div className={styles.dmAvatar} />
-                        <div className={styles.dmTextBlock}>
-                          <p className={styles.dmName}>{c.other_user}</p>
-                          <p className={styles.dmPreview}>
-                            {c.last_message || "No messages yet"}
-                          </p>
-                        </div>
-                      </button>
+                      <div key={c.conversation_id} className={styles.dmItemWrapper}>
+                        <button
+                          className={styles.dmItem}
+                          onClick={() => setActiveDM(c.other_user)}
+                        >
+                          <div className={styles.dmAvatar} />
+                          <div className={styles.dmTextBlock}>
+                            <p className={styles.dmName}>{c.other_user}</p>
+                            <p className={styles.dmPreview}>
+                              {c.last_message || "No messages yet"}
+                            </p>
+                          </div>
+                        </button>
+                        {isAdmin && (
+                          <button
+                            className={styles.deleteConvButton}
+                            onClick={() => handleDeleteConversation(c.conversation_id, c.other_user)}
+                            title="Delete conversation"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -478,6 +480,7 @@ export default function ProfilePage() {
         <DMMessenger
           otherUser={activeDM}
           onClose={() => setActiveDM(null)}
+          onConversationUpdate={loadConversations}
         />
       )}
 
@@ -503,105 +506,35 @@ export default function ProfilePage() {
               {userList.length === 0 ? (
                 <p>Loading…</p>
               ) : (
-                userList.map((u) => (
-                  <button
-                    key={u}
-                    className={styles.userRow}
-                    onClick={() => {
-                      setActiveDM(u);
-                      setShowUserPicker(false);
-                    }}
-                  >
-                    <div className={styles.dmAvatarSmall} />
-                    {u}
-                  </button>
-                ))
+                (() => {
+                  // Filter out users we already have conversations with
+                  const conversationUsers = new Set(conversations.map(c => c.other_user));
+                  const availableUsers = userList.filter(u => !conversationUsers.has(u));
+                  
+                  if (availableUsers.length === 0) {
+                    return <p>No new users available to message.</p>;
+                  }
+                  
+                  return availableUsers.map((u) => (
+                    <button
+                      key={u}
+                      className={styles.userRow}
+                      onClick={() => {
+                        setActiveDM(u);
+                        setShowUserPicker(false);
+                      }}
+                    >
+                      <div className={styles.dmAvatarSmall} />
+                      {u}
+                    </button>
+                  ));
+                })()
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Request Details Modal */}
-      {selectedRequest && (
-        <div className={styles.modalOverlay} onClick={() => setSelectedRequest(null)}>
-          <div className={styles.modalBackdrop} />
-          <div className={styles.readModal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Club Officer Request Details</h2>
-              <button
-                type="button"
-                onClick={() => setSelectedRequest(null)}
-                className={styles.closeButton}
-              >
-                ✕
-              </button>
-            </div>
-            {(() => {
-              const userDisplay = selectedRequest?.display_name
-                ? `${selectedRequest.display_name} (${selectedRequest.user_name})`
-                : (selectedRequest.user_name);
-              return (
-                <div className={styles.readMeta}>
-                  <div><strong>User:</strong> {userDisplay}</div>
-                  <div><strong>Club:</strong> {selectedRequest.club_name || selectedRequest.club_id}</div>
-                  <div><strong>Requested:</strong> {new Date(selectedRequest.request_time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
-              );
-            })()}
-            {selectedRequest.notes && (
-              <div className={styles.modalNotes}>
-                <div className={styles.modalNotesLabel}><strong>Notes:</strong></div>
-                <div className={styles.modalNotesBody}>{selectedRequest.notes}</div>
-              </div>
-            )}
-            <div className={styles.requestActions} style={{ marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  const userDisplay = selectedRequest.display_name
-                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
-                    : (selectedRequest.user_name || selectedRequest.user_id);
-                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
-                  const ok = window.confirm(`Approve ${userDisplay} as an officer for ${clubName}?`);
-                  if (!ok) return;
-                  try {
-                    await approveClubRequest(selectedRequest.request_id);
-                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
-                    setSelectedRequest(null);
-                  } catch (err) {
-                    alert(`Failed to approve: ${err.message}`);
-                  }
-                }}
-                className={styles.approveButton}
-              >
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const userDisplay = selectedRequest.display_name
-                    ? `${selectedRequest.display_name} (${selectedRequest.user_name || selectedRequest.user_id})`
-                    : (selectedRequest.user_name || selectedRequest.user_id);
-                  const clubName = selectedRequest.club_name || selectedRequest.club_id;
-                  const ok = window.confirm(`Reject ${userDisplay}'s request to join ${clubName}?`);
-                  if (!ok) return;
-                  try {
-                    await rejectClubRequest(selectedRequest.request_id);
-                    setAdminRequests(prev => prev.filter(r => r.request_id !== selectedRequest.request_id));
-                    setSelectedRequest(null);
-                  } catch (err) {
-                    alert(`Failed to reject: ${err.message}`);
-                  }
-                }}
-                className={styles.rejectButton}
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

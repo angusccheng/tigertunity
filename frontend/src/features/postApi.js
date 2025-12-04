@@ -206,11 +206,11 @@ export async function fetchPreferences(officerName) {
     return await handleResponse(r);
   } catch (err) {
     console.error("Failed to fetch preferences:", err);
-    return { preferences: [] };
+    return { post_types: [], club_types: [] };
   }
 }
 
-export async function updatePreferences(officerName, preferences) {
+export async function updatePreferences(officerName, postTypes, clubTypes) {
   try {
     const r = await fetch(`${API_BASE}/api/officers/${encodeURIComponent(officerName)}/preferences`, {
       method: "PUT",
@@ -218,7 +218,7 @@ export async function updatePreferences(officerName, preferences) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${getAccess()}`,
       },
-      body: JSON.stringify({ preferences }),
+      body: JSON.stringify({ post_types: postTypes, club_types: clubTypes }),
     });
     return await handleResponse(r);
   } catch (err) {

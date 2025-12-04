@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPosts, createPost, deletePost, savePost, unsavePost, fetchSavedPosts, updatePost, fetchPreferences } from "../features/postApi.js";
-import { fetchMyOfficerClubs } from "../features/clubsApi.js";
+import { fetchMyOfficerClubs, fetchMySavedClubs } from "../features/clubsApi.js";
 import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
@@ -17,6 +17,8 @@ export default function FeedPage() {
   const [submitting, setSubmitting] = useState(false);
   const user = getUser(); // Get logged-in user's NetID
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
+  const [savedClubs, setSavedClubs] = useState([]); // Array of saved club objects
+  const [onlyShowSavedClubs, setOnlyShowSavedClubs] = useState(false);
   // Filter states - all selected by default
   const [activePostFilters, setActivePostFilters] = useState(new Set(POST_TYPES));
   // Club type filters (defaults + dynamic). Initialize with standard types.
@@ -25,10 +27,10 @@ export default function FeedPage() {
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-    // Event start date filter
-    const [eventDateFilterEnabled, setEventDateFilterEnabled] = useState(false);
-    const [eventStartDate, setEventStartDate] = useState("");
-    const [eventEndDate, setEventEndDate] = useState("");
+  // Event start date filter
+  const [eventDateFilterEnabled, setEventDateFilterEnabled] = useState(false);
+  const [eventStartDate, setEventStartDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
   // Hide past events filter
   const [hidePastEvents, setHidePastEvents] = useState(false);
   // Search state
@@ -38,9 +40,11 @@ export default function FeedPage() {
   // Post limit state
   const [postLimit, setPostLimit] = useState(50);
   // My Preferences
-  const [preferences, setPreferences] = useState(new Set());
+  const [postTypePreferences, setPostTypePreferences] = useState(new Set());
+  const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [myPrefsEnabled, setMyPrefsEnabled] = useState(false);
+  const [savedFiltersBeforePrefs, setSavedFiltersBeforePrefs] = useState(null);
   const [form, setForm] = useState({
     post_title: "",
     club_name: "",
@@ -101,16 +105,35 @@ export default function FeedPage() {
     })();
   }, [user]);
 
+  // Load saved clubs for filter
+  useEffect(() => {
+    (async () => {
+      if (!user) {
+        setSavedClubs([]);
+        return;
+      }
+      try {
+        const clubs = await fetchMySavedClubs(user);
+        setSavedClubs(Array.isArray(clubs) ? clubs : []);
+      } catch (e) {
+        setSavedClubs([]);
+      }
+    })();
+  }, [user]);
+
   // Load user preferences
   useEffect(() => {
     (async () => {
       setPrefsLoaded(false);
-      setPreferences(new Set());
+      setPostTypePreferences(new Set());
+      setClubTypePreferences(new Set());
       if (!user) { setPrefsLoaded(true); return; }
       try {
         const resp = await fetchPreferences(user);
-        const arr = Array.isArray(resp.preferences) ? resp.preferences : [];
-        setPreferences(new Set(arr));
+        const postTypes = Array.isArray(resp.post_types) ? resp.post_types : [];
+        const clubTypes = Array.isArray(resp.club_types) ? resp.club_types : [];
+        setPostTypePreferences(new Set(postTypes));
+        setClubTypePreferences(new Set(clubTypes));
       } catch (e) {
         // ignore
       } finally {
@@ -273,18 +296,12 @@ export default function FeedPage() {
     });
   }
 
-  // Compute effective post filters (apply My Preferences intersection if enabled)
-  const effectivePostFilters = (() => {
-    if (myPrefsEnabled) {
-      if (preferences.size === 0) return new Set();
-      const inter = new Set();
-      activePostFilters.forEach((t) => { if (preferences.has(t)) inter.add(t); });
-      return inter;
-    }
-    return activePostFilters;
-  })();
+  // When preferences mode is enabled, use activePostFilters directly (which now reflects preferences)
+  // No need for separate effectivePostFilters computation
+  const effectivePostFilters = activePostFilters;
 
   // Filter posts based on active filters
+  const savedClubNames = new Set(savedClubs.map(c => (c.club_name || '').toLowerCase()));
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
     const matchesPostFilter = effectivePostFilters.has(post.post_type);
@@ -296,7 +313,7 @@ export default function FeedPage() {
       const postDate = new Date(post.post_time);
       // Normalize post date to local midnight for comparison
       const postDateOnly = new Date(postDate.getFullYear(), postDate.getMonth(), postDate.getDate());
-      
+
       if (startDate) {
         const startDateTime = new Date(startDate + 'T00:00:00'); // Parse as local time
         const startDateOnly = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
@@ -312,11 +329,11 @@ export default function FeedPage() {
     // Check event start date range if enabled
     if (eventDateFilterEnabled && (eventStartDate || eventEndDate)) {
       if (!post.event_starttime) return false; // Exclude posts without event start time
-      
+
       const eventDate = new Date(post.event_starttime);
       // Normalize event date to local midnight for comparison
       const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
-      
+
       if (eventStartDate) {
         const filterStartDateTime = new Date(eventStartDate + 'T00:00:00');
         const filterStartDateOnly = new Date(filterStartDateTime.getFullYear(), filterStartDateTime.getMonth(), filterStartDateTime.getDate());
@@ -347,12 +364,16 @@ export default function FeedPage() {
         post.post_type,
         post.club_type
       ];
-      const matchesSearch = searchableFields.some(field => 
+      const matchesSearch = searchableFields.some(field =>
         field && field.toString().toLowerCase().includes(query)
       );
       if (!matchesSearch) return false;
     }
 
+    // Only show posts by saved clubs if filter is enabled
+    if (onlyShowSavedClubs && user) {
+      if (!post.club_name || !savedClubNames.has(post.club_name.toLowerCase())) return false;
+    }
     return matchesPostFilter && matchesClubType;
   });
 
@@ -373,7 +394,7 @@ export default function FeedPage() {
 
   // Derived sorted list of unique club types for rendering (union of defaults + discovered)
   const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
-  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a,b)=>a.localeCompare(b));
+  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a, b) => a.localeCompare(b));
 
   // Apply post limit to displayed posts
   const displayedPosts = sortedPosts.slice(0, postLimit);
@@ -401,6 +422,7 @@ export default function FeedPage() {
         <aside className={styles.sidebar}>
           <h2 className={styles.sidebarTitle}>Filters</h2>
           <div className={styles.filterSection}>
+
             {/* Post Filters */}
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>Post Filters</div>
@@ -416,32 +438,6 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
-              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
-                <label className={styles.dateFilterToggle}>
-                  <input
-                    type="checkbox"
-                    checked={myPrefsEnabled}
-                    onChange={(e) => {
-                      const next = e.target.checked;
-                      if (!user || preferences.size === 0) return; // ignore if not available
-                      setMyPrefsEnabled(next);
-                    }}
-                    disabled={!user || preferences.size === 0}
-                    className={styles.dateCheckbox}
-                  />
-                  Apply My Preferences
-                </label>
-              </div>
-              {!user && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  Log in to use My Preferences.
-                </div>
-              )}
-              {user && prefsLoaded && preferences.size === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  No preferences set yet — configure them on your Profile.
-                </div>
-              )}
             </section>
 
             {/* Club Type Filters */}
@@ -461,6 +457,79 @@ export default function FeedPage() {
               </div>
             </section>
 
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={myPrefsEnabled}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      if (!user || (postTypePreferences.size === 0 && clubTypePreferences.size === 0)) return; // ignore if not available
+                      
+                      if (next) {
+                        // Save current filters before applying preferences
+                        setSavedFiltersBeforePrefs({
+                          postFilters: new Set(activePostFilters),
+                          clubFilters: new Set(activeClubTypeFilters)
+                        });
+                        // Apply preferences to active filters
+                        if (postTypePreferences.size > 0) {
+                          setActivePostFilters(new Set(postTypePreferences));
+                        }
+                        if (clubTypePreferences.size > 0) {
+                          setActiveClubTypeFilters(new Set(clubTypePreferences));
+                        }
+                      } else {
+                        // Restore previous filters
+                        if (savedFiltersBeforePrefs) {
+                          setActivePostFilters(savedFiltersBeforePrefs.postFilters);
+                          setActiveClubTypeFilters(savedFiltersBeforePrefs.clubFilters);
+                          setSavedFiltersBeforePrefs(null);
+                        }
+                      }
+                      
+                      setMyPrefsEnabled(next);
+                    }}
+                    disabled={!user || (postTypePreferences.size === 0 && clubTypePreferences.size === 0)}
+                    className={styles.dateCheckbox}
+                  />
+                  Apply My Preferences
+                </label>
+              </div>
+            </section>
+
+            {/* Saved Clubs Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel} style={{ marginTop: '0.5rem' }}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={onlyShowSavedClubs}
+                    onChange={e => setOnlyShowSavedClubs(e.target.checked)}
+                    disabled={!user || savedClubs.length === 0}
+                    className={styles.dateCheckbox}
+                  />
+                  Only Show Saved Clubs
+                </label>
+              </div>
+              {!user && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  Log in to use My Preferences and Saved Clubs.
+                </div>
+              )}
+              {user && prefsLoaded && postTypePreferences.size === 0 && clubTypePreferences.size === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No preferences set yet — configure them on your Profile.
+                </div>
+              )}
+              {user && savedClubs.length === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No saved clubs yet — star clubs in Explore to save them.
+                </div>
+              )}
+            </section>
+
             {/* Filter by Post Date */}
             <section className={styles.filterSection}>
               <div className={styles.filterLabel}>
@@ -471,7 +540,7 @@ export default function FeedPage() {
                     onChange={(e) => setDateFilterEnabled(e.target.checked)}
                     className={styles.dateCheckbox}
                   />
-                    Post Date Range Filter
+                  Post Date Range Filter
                 </label>
               </div>
               {dateFilterEnabled && (
@@ -498,40 +567,40 @@ export default function FeedPage() {
               )}
             </section>
 
-              {/* Event Start Date Range Filter */}
-              <section className={styles.filterSection}>
-                <div className={styles.filterLabel}>
-                  <label className={styles.dateFilterToggle}>
+            {/* Event Start Date Range Filter */}
+            <section className={styles.filterSection}>
+              <div className={styles.filterLabel}>
+                <label className={styles.dateFilterToggle}>
+                  <input
+                    type="checkbox"
+                    checked={eventDateFilterEnabled}
+                    onChange={(e) => setEventDateFilterEnabled(e.target.checked)}
+                    className={styles.dateCheckbox}
+                  />
+                  Event Start Date Filter
+                </label>
+              </div>
+              {eventDateFilterEnabled && (
+                <div className={styles.dateInputs}>
+                  <div className={styles.dateField}>
+                    <label className={styles.dateLabel}>From:</label>
                     <input
-                      type="checkbox"
-                      checked={eventDateFilterEnabled}
-                      onChange={(e) => setEventDateFilterEnabled(e.target.checked)}
-                      className={styles.dateCheckbox}
+                      type="date"
+                      value={eventStartDate}
+                      onChange={(e) => setEventStartDate(e.target.value)}
+                      className={styles.dateInput}
                     />
-                    Event Start Date Filter
-                  </label>
-                </div>
-                {eventDateFilterEnabled && (
-                  <div className={styles.dateInputs}>
-                    <div className={styles.dateField}>
-                      <label className={styles.dateLabel}>From:</label>
-                      <input
-                        type="date"
-                        value={eventStartDate}
-                        onChange={(e) => setEventStartDate(e.target.value)}
-                        className={styles.dateInput}
-                      />
-                    </div>
-                    <div className={styles.dateField}>
-                      <label className={styles.dateLabel}>To:</label>
-                      <input
-                        type="date"
-                        value={eventEndDate}
-                        onChange={(e) => setEventEndDate(e.target.value)}
-                        className={styles.dateInput}
-                      />
-                    </div>
                   </div>
+                  <div className={styles.dateField}>
+                    <label className={styles.dateLabel}>To:</label>
+                    <input
+                      type="date"
+                      value={eventEndDate}
+                      onChange={(e) => setEventEndDate(e.target.value)}
+                      className={styles.dateInput}
+                    />
+                  </div>
+                </div>
               )}
             </section>
 

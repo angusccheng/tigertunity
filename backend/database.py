@@ -351,7 +351,7 @@ def remove_saved_club_from_member(user_id, club_id):
         if member is None or member.saved_clubs is None:
             return False
         if club_id in member.saved_clubs:
-            member.saved_clubs.remove(club_id)
+            member.saved_clubs = [x for x in member.saved_clubs if x != club_id]
         session.commit()
         return True
     
@@ -443,7 +443,7 @@ def remove_officer_from_club(club_id, officer_id):
         if club is None or club.club_officers is None:
             return False
         if officer_id in club.club_officers:
-            club.club_officers.remove(officer_id)
+            club.club_officers = [x for x in club.club_officers if x != officer_id]
         session.commit()
         return True
     
@@ -490,3 +490,16 @@ def exists_club_request(user_id, club_id):
     """Check if a club request already exists for user and club"""
     with sqlalchemy.orm.Session(_engine) as session:
         return session.query(ClubRequest).filter(ClubRequest.user_id == user_id, ClubRequest.club_id == club_id).first() is not None
+
+def delete_conversation(conversation_id):
+    """Delete a conversation and all its messages by conversation_id"""
+    with sqlalchemy.orm.Session(_engine) as session:
+        # First delete all messages in the conversation
+        session.query(DMMessage).filter(DMMessage.conversation_id == conversation_id).delete()
+        # Then delete the conversation itself
+        conv = session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if conv is None:
+            return False
+        session.delete(conv)
+        session.commit()
+        return True

@@ -103,3 +103,35 @@ export async function leaveClub(clubId) {
   });
   return await handleResponse(r);
 }
+
+export async function fetchMySavedClubs(userName) {
+  const r = await fetch(`${API_BASE}/api/officers/${userName}/saved-clubs`, {
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  if (r.status === 401) return [];
+  return await handleResponse(r);
+}
+
+export async function saveClub(userName, clubId) {
+  const r = await fetch(`${API_BASE}/api/officers/${userName}/saved-clubs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccess()}`,
+    },
+    body: JSON.stringify({ club_id: clubId }),
+  });
+  return await handleResponse(r);
+}
+
+export async function unsaveClub(userName, clubId) {
+  const r = await fetch(`${API_BASE}/api/officers/${userName}/saved-clubs/${clubId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getAccess()}`,
+    },
+  });
+  return await handleResponse(r);
+}

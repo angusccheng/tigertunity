@@ -1,0 +1,113 @@
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.readModal {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 56rem;
+  max-height: calc(100vh - 5rem);
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
+  background: white;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.modalTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #171717;
+}
+
+.closeButton {
+  border-radius: 9999px;
+  border: 1px solid #e5e5e5;
+  padding: 0.25rem 0.5rem;
+  background: white;
+  cursor: pointer;
+}
+
+.readMeta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 0.75rem;
+}
+
+.readMeta > div {
+  font-size: 1rem;
+  color: #525252;
+}
+
+.readMeta strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #171717;
+}
+
+.modalNotes {
+  margin-top: 0.5rem;
+}
+
+.modalNotesLabel {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.modalNotesBody {
+  margin-top: 0.25rem;
+  color: #525252;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  font-size: 1rem;
+}
+
+.requestActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.approveButton,
+.rejectButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.approveButton {
+  background: #10b981;
+  color: white;
+}
+
+.rejectButton {
+  background: #ef4444;
+  color: white;
+}

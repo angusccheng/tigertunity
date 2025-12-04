@@ -77,19 +77,6 @@
   margin-bottom: 2rem;
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sectionTitle {
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ff9000;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -106,71 +93,6 @@
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-}
-
-.clubCard {
-  border-radius: 0.75rem;
-  border: 1px solid #e5e5e5;
-  background: white;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s;
-  height: 6rem;
-  overflow: hidden;
-  position: relative;
-  /* allow absolute tag positioning */
-}
-
-.clubCard:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.clubThumb {
-  height: 7rem;
-  border-radius: 0.5rem;
-  background: #e5e5e5;
-  margin-bottom: 0.5rem;
-}
-
-.clubInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.clubName {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #171717;
-}
-
-.clubDescription {
-  font-size: 0.8rem;
-  color: #525252;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* Club type tag (top-right badge) */
-.clubTypeTag {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(253, 186, 116, 0.6);
-  background: #fff7ed;
-  color: #9a3412;
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1;
-  pointer-events: none;
-  /* avoid intercepting clicks on card */
 }
 
 .addCard {
@@ -210,7 +132,7 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 40rem;
+  max-width: 56rem;
   border-radius: 1rem;
   border: 1px solid #e5e5e5;
   background: white;
@@ -365,36 +287,4 @@
 .postsEmpty {
   color: #6b7280;
   font-size: 0.875rem;
-}
-
-.postItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid #e5e5e5;
-  background: white;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-}
-
-.postItemMain {
-  display: grid;
-  gap: 0.125rem;
-  justify-items: start;
-  /* ensure inner elements align left */
-}
-
-.postItemTitle {
-  font-weight: 600;
-  color: #171717;
-  font-size: 0.9rem;
-  text-align: left;
-  /* explicit left alignment */
-}
-
-.postItemMeta {
-  display: flex;
-  gap: 0.5rem;
-  color: #6b7280;
-  font-size: 0.75rem;
 }

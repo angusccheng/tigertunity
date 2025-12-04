@@ -1,0 +1,32 @@
+/* Club Card Modal specific styles */
+.topRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 0.5rem;
+}
+
+.topRow strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #171717;
+  font-size: 1rem;
+}
+
+.readModalMeta {
+  margin-top: 0.25rem;
+  color: #525252;
+  line-height: 1.4;
+  font-size: 1rem;
+}
+
+.aboutSections {
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5rem;
+}
+.aboutSection strong {
+  color: #171717;
+  font-size: 1rem;
+}

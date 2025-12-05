@@ -815,9 +815,13 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post"""
+    """Update a post.
+    Authorization: user must be an officer of the club that owns the post.
+    """
     try:
+        # Fetch existing post
         existing = database.get_post_by_id(post_id)
         if existing is None:
             return flask.jsonify({'error': 'Post not found'}), 404

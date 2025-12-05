@@ -170,6 +170,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadConversations();
+    
+    // Poll for new messages every 5 seconds
+    const intervalId = setInterval(() => {
+      loadConversations();
+    }, 5000);
+    
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [user]);
 
   // ----------------------------
@@ -413,14 +421,21 @@ export default function ProfilePage() {
                   </p>
                 ) : (
                   <div className={styles.dmList}>
-                    {conversations.map((c) => (
+                    {conversations.map((c) => {
+                      const hasUnread = c.has_unread;
+                      return (
                       <div key={c.conversation_id} className={styles.dmItemWrapper}>
                         <button
-                          className={styles.dmItem}
+                          className={`${styles.dmItem} ${hasUnread ? styles.dmItemUnread : ''}`}
                           onClick={() => setActiveDM(c.other_user)}
                         >
                           <div className={styles.dmTextBlock}>
-                            <p className={styles.dmName}>{c.other_user}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <p className={styles.dmName}>{c.other_user}</p>
+                              {hasUnread && (
+                                <span className={styles.unreadDot}></span>
+                              )}
+                            </div>
                             <p className={styles.dmPreview}>
                               {c.last_message || "No messages yet"}
                             </p>
@@ -436,7 +451,8 @@ export default function ProfilePage() {
                           </button>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>
@@ -481,6 +497,7 @@ export default function ProfilePage() {
           otherUser={activeDM}
           onClose={() => setActiveDM(null)}
           onConversationUpdate={loadConversations}
+          onMessagesLoaded={loadConversations}
         />
       )}
 

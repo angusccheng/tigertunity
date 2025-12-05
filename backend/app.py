@@ -168,13 +168,38 @@ def list_conversations():
                 other = c.user2 if c.user1 == current else c.user1
                 last = session.query(DMMessage).filter(DMMessage.conversation_id == c.id)\
                     .order_by(DMMessage.timestamp.desc()).first()
+                
+                # Calculate unread status
+                is_user1 = c.user1 == current
+                last_read_id = c.last_read_user1 if is_user1 else c.last_read_user2
+                
+                if last_read_id:
+                    has_unread = session.query(DMMessage).filter(
+                        DMMessage.conversation_id == c.id,
+                        DMMessage.id > last_read_id,
+                        DMMessage.sender != current
+                    ).first() is not None
+                else:
+                    # Never read, check if there are any messages from other user
+                    has_unread = session.query(DMMessage).filter(
+                        DMMessage.conversation_id == c.id,
+                        DMMessage.sender != current
+                    ).first() is not None
+                
                 entry = {
                     'conversation_id': c.id,
                     'other_user': other,
                     'last_message': getattr(last, 'text', None) if last else None,
                     'last_timestamp': getattr(last, 'timestamp', None) if last else None,
+                    'has_unread': has_unread,
                 }
                 result.append(entry)
+            
+            # Sort: unread conversations first (by last_timestamp desc), then read conversations (by last_timestamp desc)
+            result.sort(key=lambda x: (
+                -(x['last_timestamp'].timestamp() if x['last_timestamp'] else 0)  # Most recent first
+            ))
+            
         return flask.jsonify(result)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
@@ -203,6 +228,16 @@ def get_dm_history(other_user):
                 return flask.jsonify([])
             msgs = session.query(DMMessage).filter(DMMessage.conversation_id == conv.id)\
                 .order_by(DMMessage.timestamp.asc()).all()
+            
+            # Mark as read for current user
+            if msgs:
+                last_msg_id = msgs[-1].id
+                if conv.user1 == current:
+                    conv.last_read_user1 = last_msg_id
+                else:
+                    conv.last_read_user2 = last_msg_id
+                session.commit()
+            
             result = [
                 {
                     'id': m.id,

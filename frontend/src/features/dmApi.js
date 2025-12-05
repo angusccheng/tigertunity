@@ -1,12 +1,12 @@
 import { authFetch } from "../auth";
 
-const BASE = "http://localhost:5000/api";
+const BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 // ----------------------------------------
 // Get all users (for New DM modal)
 // ----------------------------------------
 export async function fetchUsers() {
-  const res = await authFetch(`${BASE}/users`, {
+  const res = await authFetch(`${BASE}/api/users`, {
     method: "GET",
   });
   return res.json();
@@ -16,7 +16,7 @@ export async function fetchUsers() {
 // Get list of conversations (with last message)
 // ----------------------------------------
 export async function fetchConversations() {
-  const res = await authFetch(`${BASE}/conversations`, {
+  const res = await authFetch(`${BASE}/api/conversations`, {
     method: "GET",
   });
   return res.json();
@@ -26,7 +26,7 @@ export async function fetchConversations() {
 // Get DM history with a specific user
 // ----------------------------------------
 export async function fetchDMHistory(otherUser) {
-  const res = await authFetch(`${BASE}/dm/${otherUser}`, {
+  const res = await authFetch(`${BASE}/api/dm/${otherUser}`, {
     method: "GET",
   });
   return res.json();
@@ -36,7 +36,7 @@ export async function fetchDMHistory(otherUser) {
 // Send DM message to user
 // ----------------------------------------
 export async function sendDMMessageAPI(receiver, text) {
-  const res = await authFetch(`${BASE}/dm/${receiver}`, {
+  const res = await authFetch(`${BASE}/api/dm/${receiver}`, {
     method: "POST",
     body: JSON.stringify({ text }),
   });

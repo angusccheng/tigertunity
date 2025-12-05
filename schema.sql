@@ -1,13 +1,6 @@
-<<<<<<< HEAD
--- tigertunity/schema.sql
--- commands for creating all of the tables
-CREATE TABLE post_table (
-  post_id SERIAL PRIMARY KEY,
-=======
 -- POST TABLE
 CREATE TABLE IF NOT EXISTS post_table (
   post_id INTEGER PRIMARY KEY AUTOINCREMENT,
->>>>>>> origin/main
   post_title TEXT NOT NULL,
   club_id INTEGER NOT NULL,
   officer_id INTEGER NOT NULL,
@@ -48,7 +41,6 @@ CREATE TABLE IF NOT EXISTS club_table (
   treasurer INTEGER
 );
 
-<<<<<<< HEAD
 -- Table for AI-parsed / Zapier-ingested posts
 CREATE TABLE parsed_posts (
     parsed_id SERIAL PRIMARY KEY,
@@ -59,7 +51,6 @@ CREATE TABLE parsed_posts (
     post_type TEXT NOT NULL,
     post_time TIMESTAMP DEFAULT NOW()
 );
-=======
 -- NONCES TABLE
 CREATE TABLE IF NOT EXISTS nonces (
     nonce TEXT PRIMARY KEY,
@@ -109,4 +100,11 @@ CREATE TABLE officer_table (
   display_name TEXT,
   user_preferences TEXT[]
 )
->>>>>>> origin/main
+
+-- Migration: Add read tracking columns to conversations table
+-- Run this to add unread message tracking to existing databases
+
+ALTER TABLE conversations 
+ADD COLUMN IF NOT EXISTS last_read_user1 INTEGER,
+ADD COLUMN IF NOT EXISTS last_read_user2 INTEGER;
+

@@ -85,6 +85,8 @@ class Conversation(Base):
     user1 = Column(Text, nullable=False)
     user2 = Column(Text, nullable=False)
     last_updated = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    last_read_user1 = Column(Integer, nullable=True)  # last message ID read by user1
+    last_read_user2 = Column(Integer, nullable=True)  # last message ID read by user2
 
 
 class DMMessage(Base):

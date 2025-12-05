@@ -1,3 +1,4 @@
+# tigertunity/backend/database.py 
 import os
 import dotenv
 import sqlalchemy
@@ -26,9 +27,20 @@ class Post(Base):
     post_type = Column(Text, nullable=False)
     edit_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     edit_status = Column(Boolean, default=False)
+
     event_starttime = Column(TIMESTAMP(timezone=True), nullable=True)
     event_endtime = Column(TIMESTAMP(timezone=True), nullable=True)
 
+class ParsedPost(Base):
+    __tablename__ = "parsed_posts"
+    parsed_id = Column(Integer, primary_key=True, autoincrement=True)
+    post_title = Column(Text, nullable=False)
+    club_name = Column(Text, nullable=False)
+    officer_name = Column(Text, nullable=False, default="tigertunity-bot")
+    post_content = Column(Text, nullable=False)
+    post_type = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    
 class Member(Base):
     __tablename__ = "members_table"
     user_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -446,6 +458,39 @@ def remove_officer_from_club(club_id, officer_id):
             club.club_officers = [x for x in club.club_officers if x != officer_id]
         session.commit()
         return True
+
+#-----------------------------------------------------------------------
+# Parsed posts operations
+#-----------------------------------------------------------------------
+
+def create_parsed_post(post_title, club_name, officer_name, post_content, post_type):
+    """Insert a new parsed post row (used by Zapier ingest)."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        row = ParsedPost(
+            post_title=post_title,
+            club_name=club_name,
+            officer_name=officer_name,
+            post_content=post_content,
+            post_type=post_type
+        )
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return row
+
+def get_all_parsed_posts(limit=None):
+    """Return parsed posts newest first (optionally limited)."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        query = session.query(ParsedPost).order_by(ParsedPost.created_at.desc())
+        if limit:
+            query = query.limit(limit)
+        return query.all()
+    
+def get_parsed_post_by_id(parsed_id):
+    """Return a single parsed post by parsed_id."""
+    with sqlalchemy.orm.Session(_engine) as session:
+        return session.query(ParsedPost).filter(ParsedPost.parsed_id == parsed_id).first()
+
     
 #-----------------------------------------------------------------------
 # Club Request operations

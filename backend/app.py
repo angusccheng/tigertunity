@@ -1,3 +1,4 @@
+# tigertunity/backend/app.py 
 import flask
 import flask_cors
 import os
@@ -13,23 +14,14 @@ import database
 app = flask.Flask(__name__)
 dotenv.load_dotenv()
 
-# Allow smoother local dev if env vars are not set
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
-APP_SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'dev-secret-key')
+FRONTEND_URL = os.environ['FRONTEND_URL']
+APP_SECRET_KEY = os.environ['APP_SECRET_KEY']
 UNRESTRICTED_CLUB_DELETE = os.environ.get('UNRESTRICTED_CLUB_DELETE', 'false').lower() == 'true'
 
 _CAS_URL = 'https://fed.princeton.edu/cas/'
 
 # CORS configuration for API endpoints
-_allowed_origins = set()
-if FRONTEND_URL:
-    _allowed_origins.add(FRONTEND_URL)
-# Common dev origins
-_allowed_origins.update({
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
-})
-flask_cors.CORS(app, resources={r'/api/*': {'origins': list(_allowed_origins)}})
+flask_cors.CORS(app, resources={r'/api/*': {'origins': FRONTEND_URL}})
 
 # JWT Configuration
 app.config['JWT_SECRET_KEY'] = APP_SECRET_KEY
@@ -340,9 +332,98 @@ def list_posts():
             posts_dict[i]['officer_name'] = officer_name
             posts_dict[i]['officer_display_name'] = officer_display_name
             posts_dict[i]['timestamp'] = post.get('post_time')
-        return flask.jsonify(posts_dict)
+        
+        parsed_posts = database.get_all_parsed_posts()
+        parsed_posts_dict = []
+
+        for p in parsed_posts:
+            d = model_to_dict(p)
+            parsed_posts_dict.append({
+                "post_id"      : f"parsed-{d['parsed_id']}",  # string ID for frontend
+                "post_title"   : d.get("post_title"),
+                "club_name"    : d.get("club_name"),
+                "club_type"    : None,  # no structured club mapping (limited feature)
+                "officer_name" : d.get("officer_name", "tigertunity-bot"),
+                "post_content" : d.get("post_content"),
+                "post_type"    : d.get("post_type"),
+                "timestamp"    : d.get("created_at"),
+                "edit_status"  : False,
+                "source"       : "parsed",
+            })
+
+        merged = posts_dict + parsed_posts_dict
+        merged_sorted = sorted(
+            merged,
+            key=lambda x: x["timestamp"] or datetime.datetime.min,
+            reverse=True,
+        )
+
+        return flask.jsonify(merged_sorted[:50])
+    
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+    
+# def list_posts():
+#     """Get merged user-created posts + AI-parsed posts (20 newest total)."""
+#     try:
+#         # ---- 1. USER POSTS ----
+#         user_posts = database.get_all_posts(limit=None, order_by='post_time', order_desc=True)
+#         user_posts_dict = []
+
+#         for post in user_posts:
+#             entry = model_to_dict(post)
+
+#             # enrich fields
+#             try:
+#                 club_obj = database.get_club_by_id(entry.get('club_id'))
+#                 entry['club_name'] = getattr(club_obj, 'club_name', None)
+#             except:
+#                 entry['club_name'] = None
+
+#             try:
+#                 officer_obj = database.get_officer_by_id(entry.get('officer_id'))
+#                 entry['officer_name'] = getattr(officer_obj, 'officer_name', None)
+#             except:
+#                 entry['officer_name'] = None
+
+#             entry['timestamp'] = entry.get('post_time')
+#             entry['source'] = "user"   # <-- FLAG FOR FRONTEND
+
+#             user_posts_dict.append(entry)
+
+#         # ---- 2. PARSED POSTS ----
+#         parsed_posts = database.get_all_parsed_posts()
+#         parsed_posts_dict = []
+
+#         for p in parsed_posts:
+#             d = model_to_dict(p)
+
+#             parsed_posts_dict.append({
+#                 "post_id": f"parsed-{d['parsed_id']}",  # ensure unique IDs for frontend
+#                 "post_title": d.get("post_title"),
+#                 "club_name": d.get("club_name"),
+#                 "officer_name": d.get("officer_name", "tigertunity-bot"),
+#                 "post_content": d.get("post_content"),
+#                 "post_type": d.get("post_type"),
+#                 "timestamp": d.get("created_at"),
+#                 "edit_status": False,
+#                 "source": "parsed"
+#             })
+
+#         # ---- 3. MERGE & SORT ----
+#         merged = user_posts_dict + parsed_posts_dict
+#         merged_sorted = sorted(
+#             merged,
+#             key=lambda x: x["timestamp"] or datetime.datetime.min,
+#             reverse=True
+#         )
+
+#         # LIMIT TO 20 NEWEST POSTS
+#         return flask.jsonify(merged_sorted[:20])
+
+#     except Exception as e:
+#         return flask.jsonify({'error': str(e)}), 500
+
 
 #-----------------------------------------------------------------------
 
@@ -561,8 +642,6 @@ def delete_club(club_id):
         authorized = officer and officer.user_id in (club.club_officers or [])
         if not authorized and not UNRESTRICTED_CLUB_DELETE:
             return flask.jsonify({'error': 'Unauthorized'}), 403
-        if not authorized and UNRESTRICTED_CLUB_DELETE:
-            print(f"[UNRESTRICTED_CLUB_DELETE] User '{current_user}' deleting club {club.club_id} without officer authorization")
 
         # 1) Delete all posts for this club
         posts = database.get_posts_by_club(club_id)
@@ -586,7 +665,7 @@ def delete_club(club_id):
         # 4) Finally, delete the club
         database.delete_club(club_id)
 
-        return flask.jsonify({'message': 'Club deleted successfully', 'unrestricted': (not authorized and UNRESTRICTED_CLUB_DELETE)})
+        return flask.jsonify({'message': 'Club deleted successfully'})
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
@@ -686,7 +765,6 @@ def create_post():
             club = database.get_club_by_id(entry.get('club_id'))
             if club is not None:
                 entry['club_name'] = getattr(club, 'club_name', None)
-                entry['club_type'] = getattr(club, 'club_type', None)
         except Exception:
             pass
         try:
@@ -737,13 +815,9 @@ def get_post(post_id):
 #-----------------------------------------------------------------------
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
-@flask_jwt_extended.jwt_required()
 def update_post(post_id):
-    """Update a post.
-    Authorization: user must be an officer of the club that owns the post.
-    """
+    """Update a post"""
     try:
-        # Fetch existing post
         existing = database.get_post_by_id(post_id)
         if existing is None:
             return flask.jsonify({'error': 'Post not found'}), 404
@@ -908,6 +982,94 @@ def get_saved_clubs_for_officer(officer_name):
         
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
+    
+#-----------------------------------------------------------------------
+# Zapier Webhook Ingest
+#-----------------------------------------------------------------------
+# app.py (New/Revised Code)
+
+@app.route("/api/zapier_ingest", methods=["POST"])
+def zapier_ingest():
+    try:
+        # Use force=True to bypass Content-Type check, but this could return None
+        payload = flask.request.get_json(force=True)
+
+        # --- Robust Payload Handling ---
+        # Zapier sometimes wraps the main JSON object inside a key called "json"
+        if isinstance(payload, dict) and "json" in payload:
+            try:
+                # Attempt to load the string inside the "json" key
+                data = json.loads(payload["json"])
+            except json.JSONDecodeError:
+                # If the nested JSON is invalid, return an error
+                return flask.jsonify({"success": False, "error": "Invalid nested JSON payload"}), 400
+        else:
+            # Assume 'payload' is the correct dictionary (or None if body was empty)
+            data = payload
+        
+        # If data is None after parsing, the request body was empty or unreadable
+        if data is None:
+            return flask.jsonify({
+                "success": False,
+                "error": "Request body empty or not valid JSON"
+            }), 400
+        # --- End Robust Payload Handling ---
+        
+        # Extract fields from the 'data' dictionary
+        post_title   = (data.get("post_title") or "").strip()
+        club_name    = (data.get("club_name") or "").strip()
+        # Note: You still need to ensure 'json' is imported from line 10
+        officer_name = (data.get("officer_name") or "tigertunity-bot").strip() or "tigertunity-bot"
+        post_content = (data.get("post_content") or "").strip()
+        post_type    = (data.get("post_type") or "").strip() or "announcement"
+
+        if not post_title or not club_name or not post_content:
+            return flask.jsonify({
+                "success": False,
+                "error": "post_title, club_name, and post_content are required"
+            }), 400
+        
+        # store in parsed_posts table
+        row = database.create_parsed_post(
+            # ... (your database logic)
+            post_title=post_title,
+            club_name=club_name,
+            officer_name=officer_name,
+            post_content=post_content,
+            post_type=post_type
+        )
+
+        return flask.jsonify({
+            "success": True, 
+            "parsed_id": row.parsed_id
+        })
+
+    except Exception as e:
+        # Catch any other runtime errors (like database errors)
+        return flask.jsonify({"error": str(e)}), 500
+
+@app.route('/api/parsed-posts/<int:parsed_id>', methods=['GET'])
+def get_parsed_post(parsed_id):
+    try:
+        row = database.get_parsed_post_by_id(parsed_id)
+        if row is None:
+            return flask.jsonify({'error': 'Parsed post not found'}), 404
+
+        d = model_to_dict(row)
+
+        return flask.jsonify({
+            "post_id": f"parsed-{d['parsed_id']}",
+            "post_title": d.get("post_title"),
+            "club_name": d.get("club_name"),
+            "officer_name": d.get("officer_name", "tigertunity-bot"),
+            "post_content": d.get("post_content"),
+            "post_type": d.get("post_type"),
+            "timestamp": d.get("created_at"),
+            "source": "parsed"
+        })
+    except Exception as e:
+        return flask.jsonify({'error': str(e)}), 500
+
 
 
 #-----------------------------------------------------------------------

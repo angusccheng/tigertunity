@@ -5,6 +5,7 @@ import { refreshAccessIfNeeded, getUser } from "../auth.js";
 import Header from "../components/Header.jsx";
 import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
+import ParsedPostCard from "../components/ParsedPostCard.jsx";
 
 // Post type options (extended with Workshop, Other)
 const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
@@ -261,6 +262,20 @@ export default function FeedPage() {
       console.error(err);
     }
   }
+
+  async function handleOpenPost(post) {
+  // Parsed post → fetch /api/parsed-posts/<id>
+  if (post.source === "parsed" || (typeof post.post_id === "string" && post.post_id.startsWith("parsed-"))) {
+    const parsedId = post.post_id.split("-")[1];  
+    const res = await fetch(`/api/parsed-posts/${parsedId}`);
+    const parsed = await res.json();
+    setSelected(parsed);
+  } else {
+    // Regular post – already has full content
+    setSelected(post);
+  }
+}
+
 
   function togglePostFilter(filter) {
     setActivePostFilters(prev => {
@@ -678,22 +693,27 @@ export default function FeedPage() {
               No posts match your search for "{searchQuery}"
             </div>
           ) : (
-            displayedPosts.map((p) => (
-              <PostCard
-                key={p.post_id}
-                post={p}
-                onSaveToggle={(e) => savedPosts.has(p.post_id)
-                  ? handleUnsavePost(p.post_id, e)
-                  : handleSavePost(p.post_id, e)}
-                isSaved={savedPosts.has(p.post_id)}
-                showSaveButton={!!user}
-                myClubs={myClubs}
-                onDelete={handleDelete}
-                onUpdatePost={handleUpdatePost}
-                submitting={submitting}
-              />
-            ))
-          )}
+            displayedPosts.map((p) =>
+              p.source === "parsed" ? (
+                <ParsedPostCard key={p.post_id} parsed={p} />
+              ) : (
+                <PostCard
+                  key={p.post_id}
+                  post={p}
+                  onSaveToggle={(e) =>
+                    savedPosts.has(p.post_id)
+                      ? handleUnsavePost(p.post_id, e)
+                      : handleSavePost(p.post_id, e)
+                  }
+                  isSaved={savedPosts.has(p.post_id)}
+                  showSaveButton={!!user}
+                  myClubs={myClubs}
+                  onDelete={handleDelete}
+                  onUpdatePost={handleUpdatePost}
+                  submitting={submitting}
+                />
+              ))
+            )}
         </section>
       </main>
 

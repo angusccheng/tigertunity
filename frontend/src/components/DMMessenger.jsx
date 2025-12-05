@@ -6,7 +6,7 @@ import {
   sendDMMessageAPI,
 } from "../features/dmApi";
 
-export default function DMMessenger({ otherUser, onClose, onConversationUpdate }) {
+export default function DMMessenger({ otherUser, onClose, onConversationUpdate, onMessagesLoaded }) {
   const currentUser = getUser();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -27,6 +27,10 @@ export default function DMMessenger({ otherUser, onClose, onConversationUpdate }
       try {
         const history = await fetchDMHistory(otherUser);
         setMessages(history);
+        // Notify parent that messages have been loaded (and marked as read on backend)
+        if (onMessagesLoaded) {
+          onMessagesLoaded();
+        }
       } catch (err) {
         console.error("Failed to load history:", err);
       }

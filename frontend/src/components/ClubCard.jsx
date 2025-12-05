@@ -8,11 +8,11 @@ export default function ClubCard({
     onToggleSave, 
     myClubs = [],
     myRequests = [],
-    onEdit,
     onLeave,
     onDelete,
     onRequestOfficer,
-    onPostClick
+    onPostClick,
+    onClubUpdated
 }) {
     const [showModal, setShowModal] = useState(false);
     const isSaved = savedClubs.some(sc => sc.club_id === club.club_id);
@@ -59,10 +59,6 @@ export default function ClubCard({
                     onClose={() => setShowModal(false)}
                     myClubs={myClubs}
                     myRequests={myRequests}
-                    onEdit={(club) => {
-                        setShowModal(false);
-                        onEdit?.(club);
-                    }}
                     onLeave={(club, e) => {
                         setShowModal(false);
                         onLeave?.(club, e);
@@ -78,6 +74,7 @@ export default function ClubCard({
                     onPostClick={(post) => {
                         onPostClick?.(post);
                     }}
+                    onClubUpdated={onClubUpdated}
                 />
             )}
         </>

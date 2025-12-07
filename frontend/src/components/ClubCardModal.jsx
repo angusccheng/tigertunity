@@ -294,7 +294,7 @@ export default function ClubCardModal({
                   </button>
                 ) : (
                   <button
-                    onClick={onRequestOfficer}
+                    onClick={() => onRequestOfficer(club)}
                     style={{
                       border: '1px solid #e5e5e5',
                       borderRadius: '0.5rem',

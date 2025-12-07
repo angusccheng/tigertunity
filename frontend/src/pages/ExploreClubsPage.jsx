@@ -449,8 +449,8 @@ export default function ExploreClubsPage() {
                   myRequests={myRequests}
                   onLeave={onLeaveClub}
                   onDelete={onDeleteClub}
-                  onRequestOfficer={() => {
-                    setSelectedClubForRequest(c);
+                  onRequestOfficer={(club) => {
+                    setSelectedClubForRequest(club);
                     setRequesting(true);
                     setRequestNotes("");
                     setRequestError("");
@@ -486,7 +486,8 @@ export default function ExploreClubsPage() {
                       myRequests={myRequests}
                       onLeave={onLeaveClub}
                       onDelete={onDeleteClub}
-                      onRequestOfficer={() => {
+                      onRequestOfficer={(club) => {
+                        setSelectedClubForRequest(club);
                         setRequesting(true);
                         setRequestNotes("");
                         setRequestError("");
@@ -519,7 +520,8 @@ export default function ExploreClubsPage() {
                       myRequests={myRequests}
                       onLeave={onLeaveClub}
                       onDelete={onDeleteClub}
-                      onRequestOfficer={() => {
+                      onRequestOfficer={(club) => {
+                        setSelectedClubForRequest(club);
                         setRequesting(true);
                         setRequestNotes("");
                         setRequestError("");
@@ -545,7 +547,8 @@ export default function ExploreClubsPage() {
                     myRequests={myRequests}
                     onLeave={onLeaveClub}
                     onDelete={onDeleteClub}
-                    onRequestOfficer={() => {
+                    onRequestOfficer={(club) => {
+                      setSelectedClubForRequest(club);
                       setRequesting(true);
                       setRequestNotes("");
                       setRequestError("");

@@ -7,8 +7,8 @@ import styles from "./FeedPage.module.css";
 import PostCard from "../components/PostCard.jsx";
 import ParsedPostCard from "../components/ParsedPostCard.jsx";
 
-// Post type options (extended with Workshop, Other)
-const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
+// Post type options (alphabetically ordered)
+const POST_TYPES = ["Application", "Event", "Food", "General Meeting", "Social", "Speaker", "Workshop", "Other"];
 
 export default function FeedPage() {
   const [posts, setPosts] = useState([]);
@@ -20,11 +20,11 @@ export default function FeedPage() {
   const [savedPosts, setSavedPosts] = useState(new Set()); // Track saved post IDs
   const [savedClubs, setSavedClubs] = useState([]); // Array of saved club objects
   const [onlyShowSavedClubs, setOnlyShowSavedClubs] = useState(false);
-  // Filter states - all selected by default
-  const [activePostFilters, setActivePostFilters] = useState(new Set(POST_TYPES));
-  // Club type filters (defaults + dynamic). Initialize with standard types.
-  const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
-  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
+  // Filter states - empty by default (no filters = show all)
+  const [activePostFilters, setActivePostFilters] = useState(new Set());
+  // Club type filters (defaults + dynamic). Start empty (no filters = show all)
+  const CLUB_TYPES = ["Arts", "Athletics", "Business", "Community Service", "Gov/Policy", "STEM", "Other"];
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set());
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -289,18 +289,11 @@ export default function FeedPage() {
     });
   }
 
-  // Discover additional club types from post data and merge into active set.
+  // Discover additional club types from post data (for display only, not auto-enabled)
+  // Users can manually click to enable specific types as filters
   useEffect(() => {
     if (!posts || posts.length === 0) return;
-    const discoveredTypes = new Set();
-    posts.forEach(p => { if (p.club_type) discoveredTypes.add(p.club_type); });
-    setActiveClubTypeFilters(prev => {
-      const merged = new Set(prev);
-      discoveredTypes.forEach(t => {
-        if (!merged.has(t)) merged.add(t); // auto-enable new type by default
-      });
-      return merged;
-    });
+    // No auto-enabling - empty filters mean "show all"
   }, [posts]);
 
   function toggleClubTypeFilter(type) {
@@ -319,9 +312,11 @@ export default function FeedPage() {
   const savedClubNames = new Set(savedClubs.map(c => (c.club_name || '').toLowerCase()));
   const filteredPosts = posts.filter(post => {
     // Check if post type matches active post filters
-    const matchesPostFilter = effectivePostFilters.has(post.post_type);
+    // Empty filter set means "show all" (no filter applied)
+    const matchesPostFilter = effectivePostFilters.size === 0 || effectivePostFilters.has(post.post_type);
     // Check club type filters (include post if missing club_type so we don't hide incomplete data)
-    const matchesClubType = !post.club_type || activeClubTypeFilters.has(post.club_type);
+    // Empty filter set means "show all" (no filter applied)
+    const matchesClubType = activeClubTypeFilters.size === 0 || !post.club_type || activeClubTypeFilters.has(post.club_type);
 
     // Check post date range if enabled
     if (dateFilterEnabled && (startDate || endDate)) {
@@ -409,7 +404,12 @@ export default function FeedPage() {
 
   // Derived sorted list of unique club types for rendering (union of defaults + discovered)
   const discoveredTypes = Array.from(new Set(posts.map(p => p.club_type).filter(Boolean)));
-  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a, b) => a.localeCompare(b));
+  const allClubTypes = Array.from(new Set([...CLUB_TYPES, ...discoveredTypes])).sort((a, b) => {
+    // Keep "Other" at the end
+    if (a === "Other") return 1;
+    if (b === "Other") return -1;
+    return a.localeCompare(b);
+  });
 
   // Apply post limit to displayed posts
   const displayedPosts = sortedPosts.slice(0, postLimit);
@@ -511,6 +511,16 @@ export default function FeedPage() {
                   />
                   Apply My Preferences
                 </label>
+              {!user && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  Log in to use My Preferences and Saved Clubs.
+                </div>
+              )}
+              {user && prefsLoaded && postTypePreferences.size === 0 && clubTypePreferences.size === 0 && (
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                  No preferences set yet — configure them on your Profile.
+                </div>
+              )}
               </div>
             </section>
 
@@ -528,16 +538,7 @@ export default function FeedPage() {
                   Only Show Saved Clubs
                 </label>
               </div>
-              {!user && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  Log in to use My Preferences and Saved Clubs.
-                </div>
-              )}
-              {user && prefsLoaded && postTypePreferences.size === 0 && clubTypePreferences.size === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                  No preferences set yet — configure them on your Profile.
-                </div>
-              )}
+
               {user && savedClubs.length === 0 && (
                 <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
                   No saved clubs yet — star clubs in Explore to save them.

@@ -12,12 +12,31 @@ export default function DMMessenger({ otherUser, onClose, onConversationUpdate, 
   const [input, setInput] = useState("");
 
   const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const previousMessageCountRef = useRef(0);
 
-  // Always scroll to bottom when messages change
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-  useEffect(scrollToBottom, [messages]);
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (messages.length > 0 && previousMessageCountRef.current === 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length]);
+
+  // Only auto-scroll to bottom when new messages are added AND user is near bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    const hasNewMessages = messages.length > previousMessageCountRef.current;
+
+    // Auto-scroll only if user is near bottom or new messages arrived
+    if (hasNewMessages && isNearBottom) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+
+    previousMessageCountRef.current = messages.length;
+  }, [messages]);
 
   // Load past DM history + poll every 2 seconds
   useEffect(() => {
@@ -93,7 +112,7 @@ export default function DMMessenger({ otherUser, onClose, onConversationUpdate, 
       </div>
 
       {/* MESSAGE LIST */}
-      <div style={styles.messages}>
+      <div style={styles.messages} ref={messagesContainerRef}>
         {messages.map((m, i) => (
           <div
             key={i}

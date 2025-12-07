@@ -10,8 +10,8 @@ import DMMessenger from "../components/DMMessenger.jsx";
 import ClubRequestCard from "../components/ClubRequestCard.jsx";
 
 // Constants for preference options
-const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
-const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+const POST_TYPES = ["Application", "Event", "Food", "General Meeting", "Social", "Speaker", "Workshop", "Other"];
+const CLUB_TYPES = ["Arts", "Athletics", "Business", "Community Service", "Gov/Policy", "STEM", "Other"];
 
 export default function ProfilePage() {
   const user = getUser();
@@ -25,7 +25,6 @@ export default function ProfilePage() {
   const [notepadLoading, setNotepadLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(true);
-  const POST_TYPES = ["Event", "Application", "Food", "Social", "Speaker", "General Meeting", "Workshop", "Other"];
   const [postTypePreferences, setPostTypePreferences] = useState(new Set());
   const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
   const [prefsLoading, setPrefsLoading] = useState(true);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getUser } from "../auth";
 // Reuse club type filter options from FeedPage
-const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+const CLUB_TYPES = ["Arts", "Athletics", "Business", "Community Service", "Gov/Policy", "STEM", "Other"];
 import Header from "../components/Header.jsx";
 import ClubCard from "../components/ClubCard.jsx";
 import styles from "./ExploreClubsPage.module.css";
@@ -666,7 +666,6 @@ export default function ExploreClubsPage() {
                     setRequestError("");
                     try {
                       await requestOfficerForClub(selectedClubForRequest.club_id, requestNotes);
-                      alert("Request submitted");
                       await refreshClubs();
                       setRequesting(false);
                     } catch (err) {

@@ -5,7 +5,7 @@ import PostCard from "./PostCard.jsx";
 import { fetchPostsByClub } from "../features/postApi.js";
 import { updateClub } from "../features/clubsApi.js";
 
-const CLUB_TYPES = ["Business", "STEM", "Athletics", "Gov/Policy", "Arts", "Community Service", "Other"];
+const CLUB_TYPES = ["Arts", "Athletics", "Business", "Community Service", "Gov/Policy", "STEM", "Other"];
 
 export default function ClubCardModal({ 
   club, 

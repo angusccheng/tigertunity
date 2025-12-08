@@ -37,7 +37,6 @@ export async function fetchPostsByClub(clubId) {
 
 export async function createPost(input) {
   try {
-    console.log(input);
     const r = await fetch(`${API_BASE}/api/posts`, {
       method: "POST",
       headers: {

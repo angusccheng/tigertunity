@@ -18,12 +18,8 @@ async function getTokens() {
     return;
   }
 
-  console.log('getTokens called, nonce:', nonce);
-  console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL);
-
   if (nonce === null) {
     // No nonce, render app normally
-    console.log('No nonce, rendering app normally');
     createRoot(root).render(
       <StrictMode>
         <BrowserRouter>
@@ -35,15 +31,12 @@ async function getTokens() {
   }
 
   // Exchange nonce for tokens
-  console.log('Nonce found, exchanging for tokens...');
   try {
     const success = await exchangeNonceIfPresent();
-    console.log('Nonce exchange result:', success);
     
     // Always render the app - exchangeNonceIfPresent already cleaned up the URL
     // If successful, user is authenticated and will see the feed
     // If failed, ProtectedRoute will redirect to login
-    console.log('Rendering app after nonce exchange');
     createRoot(root).render(
       <StrictMode>
         <BrowserRouter>

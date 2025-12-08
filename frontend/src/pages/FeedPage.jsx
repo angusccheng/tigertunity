@@ -173,7 +173,6 @@ export default function FeedPage() {
   }
 
   async function onSubmit(e) {
-    console.log("i am doing this test right now");
     e.preventDefault();
     const v = validate(form);
     setErrors(v);
@@ -191,7 +190,6 @@ export default function FeedPage() {
       }
       const response = await createPost(payload);
       const created = response.entry;
-      console.log(created);
       setPosts((prev) => [created, ...prev]);
       setForm({
         post_title: "",

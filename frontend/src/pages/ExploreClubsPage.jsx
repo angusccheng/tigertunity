@@ -95,7 +95,6 @@ export default function ExploreClubsPage() {
     }
     setSubmitting(true);
     try {
-      console.log('Creating club with data:', form);
       // Build final officer list: user-typed + current user
       const normalized = officers.map(o => o.trim().toLowerCase()).filter(o => o);
       if (currentUser) {
@@ -106,10 +105,8 @@ export default function ExploreClubsPage() {
         ...form,
         officer_usernames: Array.from(new Set(normalized))
       });
-      console.log('Club created, response:', result);
       // Refresh both lists from server to ensure consistency
       const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
-      console.log('Fetched clubs - all:', all.length, 'mine:', (Array.isArray(mineRaw) ? mineRaw.length : 0));
       setAllClubs(all);
       if (mineRaw && mineRaw._unauthorized) {
         setSessionExpired(true);
@@ -174,7 +171,6 @@ export default function ExploreClubsPage() {
     // Check if user is the only officer
     // Use officer_display_names since that's what the backend returns
     const officerCount = c.officer_display_names ? c.officer_display_names.length : 1;
-    console.log('Officer count calculated:', officerCount);
     if (officerCount === 1) {
       return {
         error: 'You cannot leave this club because you are the only officer. Please add another officer first or delete the club.'
@@ -185,9 +181,7 @@ export default function ExploreClubsPage() {
     const ok = window.confirm(`Leave "${name}" as an officer? You will lose officer access to this club.`);
     if (!ok) return { cancelled: true };
     try {
-      console.log('leaving club');
       const output = await leaveClub(c.club_id);
-      console.log(output);
       const [all, mineRaw] = await Promise.all([fetchAllClubs(), fetchMyOfficerClubs()]);
       setAllClubs(all);
       if (mineRaw && mineRaw._unauthorized) {

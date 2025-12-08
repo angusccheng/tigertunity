@@ -4,7 +4,6 @@ export function saveTokens({ username, access, refresh }) {
   sessionStorage.setItem("tt_refresh", refresh);
 }
 export function clearTokens() {
-  console.log("this is clearing tokens");
   ["tt_user", "tt_access", "tt_refresh"].forEach(k => sessionStorage.removeItem(k));
 }
 export function getUser() { return sessionStorage.getItem("tt_user"); }
@@ -15,17 +14,14 @@ export async function exchangeNonceIfPresent() {
   const url = new URL(window.location.href);
   const nonce = url.searchParams.get("nonce");
   if (!nonce) {
-    console.log('No nonce in URL');
     return false;
   }
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   const tokenUrl = `${backendUrl}/api/gettokens?nonce=${encodeURIComponent(nonce)}`;
-  console.log('Exchanging nonce at:', tokenUrl);
 
   try {
     const r = await fetch(tokenUrl);
-    console.log('Response status:', r.status, r.statusText);
 
     if (!r.ok) {
       const text = await r.text();
@@ -35,7 +31,6 @@ export async function exchangeNonceIfPresent() {
     }
 
     const tokens = await r.json();
-    console.log('Received tokens:', tokens);
 
     // Support both legacy array format [username, access, refresh]
     // and new object format { username, access, refresh }
@@ -48,7 +43,6 @@ export async function exchangeNonceIfPresent() {
 
     if (parsed) {
       saveTokens(parsed);
-      console.log('Tokens saved, user:', parsed.username);
       url.searchParams.delete("nonce");
       window.history.replaceState({}, "", url.toString());
       return true;

@@ -6,13 +6,11 @@ export default function PostCard({ post, onSaveToggle, isSaved, showSaveButton =
     const [showModal, setShowModal] = useState(false);
 
     // Format officer display: "DisplayName (netid)" or just "netid" if no display name
-    console.log(post);
     const officerDisplay = post.officer_display_name
         ? `${post.officer_display_name} (${post.officer_name})`
         : post.officer_name;
 
     function truncate(name, limit) {
-        console.log(name);
         return name.length > limit + 3 ? name.slice(0, limit) + "..." : name;
     }
 

@@ -40,6 +40,7 @@ export default function FeedPage() {
   const [sortMode, setSortMode] = useState('post_date');
   // Post limit state
   const [postLimit, setPostLimit] = useState(50);
+  const [postLimitInput, setPostLimitInput] = useState('50');
   // My Preferences
   const [postTypePreferences, setPostTypePreferences] = useState(new Set());
   const [clubTypePreferences, setClubTypePreferences] = useState(new Set());
@@ -678,8 +679,27 @@ export default function FeedPage() {
                   type="number"
                   min="1"
                   max="200"
-                  value={postLimit}
-                  onChange={(e) => setPostLimit(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                  value={postLimitInput}
+                  onChange={(e) => setPostLimitInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const parsed = parseInt(postLimitInput);
+                      let value = isNaN(parsed) ? 50 : parsed;
+                      if (value <= 0) value = 1;
+                      if (value > 200) value = 200;
+                      setPostLimit(value);
+                      setPostLimitInput(value.toString());
+                      e.target.blur(); // Deselect the input
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(postLimitInput);
+                    let value = isNaN(parsed) ? 50 : parsed;
+                    if (value <= 0) value = 1;
+                    if (value > 200) value = 200;
+                    setPostLimit(value);
+                    setPostLimitInput(value.toString());
+                  }}
                   className={styles.postLimitInput}
                 />
                 posts

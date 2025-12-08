@@ -430,7 +430,12 @@ export default function ProfilePage() {
                         >
                           <div className={styles.dmTextBlock}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <p className={styles.dmName}>{c.other_user}</p>
+                              <p className={styles.dmName}>
+                                {c.other_display_name}
+                                {c.other_display_name !== c.other_user && (
+                                  <span> ({c.other_user})</span>
+                                )}
+                              </p>
                               {hasUnread && (
                                 <span className={styles.unreadDot}></span>
                               )}
@@ -491,14 +496,27 @@ export default function ProfilePage() {
       </main>
 
       {/* DM POPUP WINDOW */}
-      {activeDM && (
-        <DMMessenger
-          otherUser={activeDM}
-          onClose={() => setActiveDM(null)}
-          onConversationUpdate={loadConversations}
-          onMessagesLoaded={loadConversations}
-        />
-      )}
+      {activeDM && (() => {
+        // Look up display name from conversations or userList
+        const conversation = conversations.find(c => c.other_user === activeDM);
+        const userFromList = userList.find(u => u.user_name === activeDM);
+        const displayName = conversation?.other_display_name || userFromList?.display_name || activeDM;
+        
+        // Format: "DisplayName (username)" if different, otherwise just "username"
+        const formattedName = displayName !== activeDM 
+          ? `${displayName} (${activeDM})`
+          : displayName;
+        
+        return (
+          <DMMessenger
+            otherUser={activeDM}
+            otherDisplayName={formattedName}
+            onClose={() => setActiveDM(null)}
+            onConversationUpdate={loadConversations}
+            onMessagesLoaded={loadConversations}
+          />
+        );
+      })()}
 
       {/* USER PICKER MODAL */}
       {showUserPicker && (
@@ -534,9 +552,10 @@ export default function ProfilePage() {
                   const query = userSearch.trim().toLowerCase();
                   const filtered = userList.filter(u => {
                     const matchesSearch = !query || (
-                      u.display_name.toLowerCase().includes(query)
+                      u.display_name.toLowerCase().includes(query) ||
+                      u.user_name.toLowerCase().includes(query)
                     );
-                    const notInConversations = !conversationUsers.has(u.display_name);
+                    const notInConversations = !conversationUsers.has(u.user_name);
                     return matchesSearch && notInConversations;
                   });
                   
@@ -546,15 +565,18 @@ export default function ProfilePage() {
                   
                   return filtered.map((u) => (
                     <button
-                      key={u.display_name}
+                      key={u.user_name}
                       className={styles.userTile}
                       onClick={() => {
-                        setActiveDM(u.display_name);
+                        setActiveDM(u.user_name);
                         setShowUserPicker(false);
                       }}
                     >
                       <div className={styles.userTileName}>
                         {u.display_name}
+                        {u.display_name !== u.user_name && (
+                          <span> ({u.user_name})</span>
+                        )}
                       </div>
                     </button>
                   ));

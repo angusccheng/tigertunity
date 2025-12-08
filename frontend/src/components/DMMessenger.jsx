@@ -6,10 +6,13 @@ import {
   sendDMMessageAPI,
 } from "../features/dmApi";
 
-export default function DMMessenger({ otherUser, onClose, onConversationUpdate, onMessagesLoaded }) {
+export default function DMMessenger({ otherUser, otherDisplayName, onClose, onConversationUpdate, onMessagesLoaded }) {
   const currentUser = getUser();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  
+  // Use display name if provided, otherwise fall back to username
+  const displayName = otherDisplayName || otherUser;
 
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -99,7 +102,7 @@ export default function DMMessenger({ otherUser, onClose, onConversationUpdate, 
     <div style={styles.wrapper}>
       {/* HEADER */}
       <div style={styles.header}>
-        <span>Chat with {otherUser}</span>
+        <span>Chat with {displayName}</span>
         {onClose && (
           <button
             type="button"

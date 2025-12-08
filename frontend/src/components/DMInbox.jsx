@@ -52,7 +52,12 @@ export default function DMInbox({ onOpenConversation }) {
               cursor: "pointer",
             }}
           >
-            <strong>{c.other_user}</strong>
+            <strong>
+              {c.other_display_name || c.other_user}
+              {c.other_display_name && c.other_display_name !== c.other_user && (
+                <span> ({c.other_user})</span>
+              )}
+            </strong>
             <div style={{ fontSize: "0.75rem", color: "#666" }}>
               {c.last_message
                 ? `Last message: ${c.last_message}`

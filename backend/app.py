@@ -147,7 +147,7 @@ def list_users():
         user_list = [
             {
                 'user_name': u.user_name,
-                'display_name': (getattr(u, 'display_name', None) + ' (' + u.user_name + ')') if getattr(u, 'display_name', None) else u.user_name
+                'display_name': getattr(u, 'display_name', None) or u.user_name
             }
             for u in users
             if getattr(u, 'user_name', None) and u.user_name != current
@@ -175,6 +175,12 @@ def list_conversations():
                 last = session.query(DMMessage).filter(DMMessage.conversation_id == c.id)\
                     .order_by(DMMessage.timestamp.desc()).first()
                 
+                # Get display name for other user
+                other_member = database.get_member_by_name(other)
+                other_display_name = getattr(other_member, 'display_name', None) if other_member else None
+                if not other_display_name:
+                    other_display_name = other
+                
                 # Calculate unread status
                 is_user1 = c.user1 == current
                 last_read_id = c.last_read_user1 if is_user1 else c.last_read_user2
@@ -195,6 +201,7 @@ def list_conversations():
                 entry = {
                     'conversation_id': c.id,
                     'other_user': other,
+                    'other_display_name': other_display_name,
                     'last_message': getattr(last, 'text', None) if last else None,
                     'last_timestamp': getattr(last, 'timestamp', None) if last else None,
                     'has_unread': has_unread,

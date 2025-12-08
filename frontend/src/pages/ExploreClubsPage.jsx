@@ -25,8 +25,8 @@ export default function ExploreClubsPage() {
   const [requestError, setRequestError] = useState("");
   const [myRequests, setMyRequests] = useState([]);
   const [savedClubs, setSavedClubs] = useState([]);
-  // Club type filters (all selected by default)
-  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set(CLUB_TYPES));
+  // Club type filters - empty by default (no filters = show all)
+  const [activeClubTypeFilters, setActiveClubTypeFilters] = useState(new Set());
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   // Sort state: 'club_id' (creation order) or 'alphabetical'
@@ -46,11 +46,7 @@ export default function ExploreClubsPage() {
         currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
       ]);
       setAllClubs(all);
-      // Capture any dynamic club types not in the static list and add them to active filters
-      const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
-      if (dynamicTypes.length) {
-        setActiveClubTypeFilters(prev => new Set([...prev, ...dynamicTypes]));
-      }
+      // No auto-enabling - empty filters mean "show all"
       if (mineRaw && mineRaw._unauthorized) {
         setSessionExpired(true);
         setMyClubs([]);
@@ -174,9 +170,20 @@ export default function ExploreClubsPage() {
 
   async function onLeaveClub(c, e) {
     if (e) e.stopPropagation();
+    
+    // Check if user is the only officer
+    // Use officer_display_names since that's what the backend returns
+    const officerCount = c.officer_display_names ? c.officer_display_names.length : 1;
+    console.log('Officer count calculated:', officerCount);
+    if (officerCount === 1) {
+      return {
+        error: 'You cannot leave this club because you are the only officer. Please add another officer first or delete the club.'
+      };
+    }
+    
     const name = c.club_name || 'this club';
     const ok = window.confirm(`Leave "${name}" as an officer? You will lose officer access to this club.`);
-    if (!ok) return;
+    if (!ok) return { cancelled: true };
     try {
       console.log('leaving club');
       const output = await leaveClub(c.club_id);
@@ -193,9 +200,10 @@ export default function ExploreClubsPage() {
       if (selectedClub && selectedClub.club_id === c.club_id) {
         handleCloseDetails();
       }
+      return { success: true };
     } catch (err) {
       console.error('Failed to leave club:', err);
-      alert(`Failed to leave club: ${err.message}`);
+      return { error: `Failed to leave club: ${err.message}` };
     }
   }
 
@@ -209,9 +217,8 @@ export default function ExploreClubsPage() {
 
   // Filtered lists; if a club has no club_type treat it as always visible
   const displayMyClubs = myClubs.filter(c => {
-    if (!c.club_type) return true;
-    // Unknown dynamic types (not in CLUB_TYPES) are auto-added to filters on load; rely on activeClubTypeFilters
-    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    // Empty filter set means "show all" (no filter applied)
+    const matchesType = activeClubTypeFilters.size === 0 || !c.club_type || activeClubTypeFilters.has(c.club_type);
 
     // Check search query (case-insensitive, partial matching across searchable fields)
     if (searchQuery.trim()) {
@@ -238,8 +245,38 @@ export default function ExploreClubsPage() {
     }
   });
   const displayAllClubs = allClubs.filter(c => {
-    if (!c.club_type) return true;
-    const matchesType = activeClubTypeFilters.has(c.club_type) || !CLUB_TYPES.includes(c.club_type);
+    // Empty filter set means "show all" (no filter applied)
+    const matchesType = activeClubTypeFilters.size === 0 || !c.club_type || activeClubTypeFilters.has(c.club_type);
+
+    // Check search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchableFields = [
+        c.club_name,
+        c.club_profile,
+        c.club_type,
+        ...(c.officer_names || [])
+      ];
+      const matchesSearch = searchableFields.some(field =>
+        field && field.toString().toLowerCase().includes(query)
+      );
+      return matchesType && matchesSearch;
+    }
+
+    return matchesType;
+  }).sort((a, b) => {
+    if (sortMode === 'alphabetical') {
+      return (a.club_name || '').localeCompare(b.club_name || '');
+    } else {
+      // Sort by club_id (creation order)
+      return (a.club_id || 0) - (b.club_id || 0);
+    }
+  });
+
+  // Filtered saved clubs
+  const displaySavedClubs = savedClubs.filter(c => {
+    // Empty filter set means "show all" (no filter applied)
+    const matchesType = activeClubTypeFilters.size === 0 || !c.club_type || activeClubTypeFilters.has(c.club_type);
 
     // Check search query
     if (searchQuery.trim()) {
@@ -279,10 +316,7 @@ export default function ExploreClubsPage() {
         currentUser ? fetchMySavedClubs(currentUser) : Promise.resolve([])
       ]);
       setAllClubs(all);
-      const dynamicTypes = Array.from(new Set(all.map(c => c.club_type).filter(t => t && !CLUB_TYPES.includes(t))));
-      if (dynamicTypes.length) {
-        setActiveClubTypeFilters(prev => new Set([...prev, ...dynamicTypes]));
-      }
+      // No auto-enabling - empty filters mean "show all"
       if (mineRaw && mineRaw._unauthorized) {
         setSessionExpired(true);
         setMyClubs([]);
@@ -438,8 +472,13 @@ export default function ExploreClubsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>My Clubs</h2>
             </div>
-            <div className={styles.grid}>
-              {displayMyClubs.map((c) => (
+            {displayMyClubs.length === 0 ? (
+              <div style={{ color: '#6b7280', fontSize: '0.9rem', padding: '1rem 0' }}>
+                {activeClubTypeFilters.size > 0 || searchQuery.trim() ? 'No clubs match your filters.' : 'You are not an officer of any clubs yet.'}
+              </div>
+            ) : (
+              <div className={styles.grid}>
+                {displayMyClubs.map((c) => (
                 <ClubCard
                   key={`mine-${c.club_id}`}
                   club={c}
@@ -464,6 +503,7 @@ export default function ExploreClubsPage() {
                 <span className={styles.addIcon}>＋</span>
               </button>
             </div>
+            )}
             {/* Requested Clubs Section */}
             <div style={{ marginTop: '1rem' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Requested Clubs</h2>
@@ -509,8 +549,13 @@ export default function ExploreClubsPage() {
             {savedClubs.length > 0 && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Saved Clubs</h2>
-                <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
-                  {savedClubs.map((c) => (
+                {displaySavedClubs.length === 0 ? (
+                  <div style={{ color: '#6b7280', fontSize: '0.9rem', padding: '1rem 0' }}>
+                    No saved clubs match your filters.
+                  </div>
+                ) : (
+                  <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                    {displaySavedClubs.map((c) => (
                     <ClubCard
                       key={`saved-${c.club_id}`}
                       club={c}
@@ -531,13 +576,19 @@ export default function ExploreClubsPage() {
                     />
                   ))}
                 </div>
+                )}
               </div>
             )}
             {/* Other Clubs Section */}
             <div style={{ marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Other Clubs</h2>
-              <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
-                {displayAllClubs.filter(c => !savedClubs.some(sc => sc.club_id === c.club_id)).map((c) => (
+              {displayAllClubs.filter(c => !savedClubs.some(sc => sc.club_id === c.club_id)).length === 0 ? (
+                <div style={{ color: '#6b7280', fontSize: '0.9rem', padding: '1rem 0' }}>
+                  {activeClubTypeFilters.size > 0 || searchQuery.trim() ? 'No clubs match your filters.' : 'No clubs available.'}
+                </div>
+              ) : (
+                <div className={styles.grid} style={{ marginTop: '0.5rem' }}>
+                  {displayAllClubs.filter(c => !savedClubs.some(sc => sc.club_id === c.club_id)).map((c) => (
                   <ClubCard
                     key={c.club_id}
                     club={c}
@@ -557,7 +608,8 @@ export default function ExploreClubsPage() {
                     onClubUpdated={refreshClubs}
                   />
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           </section>
         )}

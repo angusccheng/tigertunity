@@ -59,9 +59,13 @@ export default function ClubCard({
                     onClose={() => setShowModal(false)}
                     myClubs={myClubs}
                     myRequests={myRequests}
-                    onLeave={(club, e) => {
-                        setShowModal(false);
-                        onLeave?.(club, e);
+                    onLeave={async (club, e) => {
+                        const result = await onLeave?.(club, e);
+                        // Only close modal if leave was successful
+                        if (result?.success) {
+                            setShowModal(false);
+                        }
+                        return result;
                     }}
                     onDelete={(club, e) => {
                         setShowModal(false);

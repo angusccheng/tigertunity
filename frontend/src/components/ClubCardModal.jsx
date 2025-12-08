@@ -28,6 +28,7 @@ export default function ClubCardModal({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [leaveError, setLeaveError] = useState("");
   const closeBtnRef = useRef(null);
 
   const isMyClub = myClubs.some(c => c.club_id === club.club_id);
@@ -229,6 +230,20 @@ export default function ClubCardModal({
                 )}
               </div>
             </div>
+            {/* Display leave error if present */}
+            {leaveError && (
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                fontSize: '0.875rem'
+              }}>
+                {leaveError}
+              </div>
+            )}
             {/* Room for actions: Save/Join, View Posts, etc. */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
               {isMyClub && (
@@ -247,7 +262,13 @@ export default function ClubCardModal({
                     Edit
                   </button>
                   <button
-                    onClick={(e) => onLeave(club, e)}
+                    onClick={async (e) => {
+                      setLeaveError("");
+                      const result = await onLeave(club, e);
+                      if (result?.error) {
+                        setLeaveError(result.error);
+                      }
+                    }}
                     style={{
                       border: 'none',
                       borderRadius: '0.5rem',

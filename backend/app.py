@@ -140,13 +140,19 @@ def health():
 @app.route('/api/users', methods=['GET'])
 @flask_jwt_extended.jwt_required()
 def list_users():
-    """Return list of member usernames for DM picker."""
+    """Return list of member objects with user_name and display_name for DM picker."""
     try:
         users = database.get_all_members()
-        names = [u.user_name for u in users if getattr(u, 'user_name', None)]
         current = flask_jwt_extended.get_jwt_identity()
-        names = [n for n in names if n != current]
-        return flask.jsonify(names)
+        user_list = [
+            {
+                'user_name': u.user_name,
+                'display_name': (getattr(u, 'display_name', None) + ' (' + u.user_name + ')') if getattr(u, 'display_name', None) else u.user_name
+            }
+            for u in users
+            if getattr(u, 'user_name', None) and u.user_name != current
+        ]
+        return flask.jsonify(user_list)
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 

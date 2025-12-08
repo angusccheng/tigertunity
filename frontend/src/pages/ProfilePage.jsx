@@ -533,8 +533,10 @@ export default function ProfilePage() {
                   const conversationUsers = new Set(conversations.map(c => c.other_user));
                   const query = userSearch.trim().toLowerCase();
                   const filtered = userList.filter(u => {
-                    const matchesSearch = !query || (u && u.toLowerCase().includes(query));
-                    const notInConversations = !conversationUsers.has(u);
+                    const matchesSearch = !query || (
+                      u.display_name.toLowerCase().includes(query)
+                    );
+                    const notInConversations = !conversationUsers.has(u.display_name);
                     return matchesSearch && notInConversations;
                   });
                   
@@ -544,14 +546,16 @@ export default function ProfilePage() {
                   
                   return filtered.map((u) => (
                     <button
-                      key={u}
+                      key={u.display_name}
                       className={styles.userTile}
                       onClick={() => {
-                        setActiveDM(u);
+                        setActiveDM(u.display_name);
                         setShowUserPicker(false);
                       }}
                     >
-                      <div className={styles.userTileName}>{u}</div>
+                      <div className={styles.userTileName}>
+                        {u.display_name}
+                      </div>
                     </button>
                   ));
                 })()

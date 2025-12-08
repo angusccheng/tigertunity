@@ -310,6 +310,18 @@ export default function FeedPage() {
   // Filter posts based on active filters
   const savedClubNames = new Set(savedClubs.map(c => (c.club_name || '').toLowerCase()));
   const filteredPosts = posts.filter(post => {
+    // Determine if any filter is active
+    const filtersActive = effectivePostFilters.size > 0 || 
+                          activeClubTypeFilters.size > 0 || 
+                          onlyShowSavedClubs || 
+                          (dateFilterEnabled && (startDate || endDate)) ||
+                          (eventDateFilterEnabled && (eventStartDate || eventEndDate)) ||
+                          hidePastEvents ||
+                          searchQuery.trim();
+
+    // Hide parsed posts when any filter is applied
+    if (filtersActive && post.source === "parsed") return false;
+
     // Check if post type matches active post filters
     // Empty filter set means "show all" (no filter applied)
     const matchesPostFilter = effectivePostFilters.size === 0 || effectivePostFilters.has(post.post_type);
@@ -389,10 +401,16 @@ export default function FeedPage() {
   // Sort filtered posts based on selected sort mode
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortMode === 'event_start') {
+      // When sorting by event time, put parsed posts at the end
+      const aIsParsed = a.source === "parsed";
+      const bIsParsed = b.source === "parsed";
+      if (aIsParsed && !bIsParsed) return 1;
+      if (!aIsParsed && bIsParsed) return -1;
+      
       // Sort by event_starttime (soonest/upcoming first); posts without starttime go to end
       const aTime = a.event_starttime ? new Date(a.event_starttime).getTime() : Infinity;
       const bTime = b.event_starttime ? new Date(b.event_starttime).getTime() : Infinity;
-      return aTime - bTime;
+      return bTime - aTime;
     } else {
       // Default: sort by post_time (newest first)
       const aTime = a.post_time ? new Date(a.post_time).getTime() : 0;

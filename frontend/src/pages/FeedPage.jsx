@@ -544,12 +544,12 @@ export default function FeedPage() {
                   Apply My Preferences
                 </label>
               {!user && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 'normal' }}>
                   Log in to use My Preferences and Saved Clubs.
                 </div>
               )}
               {user && prefsLoaded && postTypePreferences.size === 0 && clubTypePreferences.size === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 'normal' }}>
                   No preferences set yet — configure them on your Profile.
                 </div>
               )}
@@ -572,7 +572,7 @@ export default function FeedPage() {
               </div>
 
               {user && savedClubs.length === 0 && (
-                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem' }}>
+                <div className={styles.helperText} style={{ marginTop: '0.25rem', color: '#6b7280', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 'normal' }}>
                   No saved clubs yet — star clubs in Explore to save them.
                 </div>
               )}

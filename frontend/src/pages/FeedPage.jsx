@@ -37,7 +37,7 @@ export default function FeedPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   // Sort state: 'post_date' or 'event_start'
-  const [sortMode, setSortMode] = useState('post_date');
+  const [sortMode, setSortMode] = useState('event_start');
   // Post limit state
   const [postLimit, setPostLimit] = useState(50);
   const [postLimitInput, setPostLimitInput] = useState('50');
@@ -407,9 +407,17 @@ export default function FeedPage() {
       if (aIsParsed && !bIsParsed) return 1;
       if (!aIsParsed && bIsParsed) return -1;
       
-      // Sort by event_starttime (soonest/upcoming first); posts without starttime go to end
-      const aTime = a.event_starttime ? new Date(a.event_starttime).getTime() : Infinity;
-      const bTime = b.event_starttime ? new Date(b.event_starttime).getTime() : Infinity;
+      // Sort by event_starttime, fall back to event_endtime if no starttime
+      const aTime = a.event_starttime 
+        ? new Date(a.event_starttime).getTime() 
+        : a.event_endtime 
+          ? new Date(a.event_endtime).getTime() 
+          : Infinity;
+      const bTime = b.event_starttime 
+        ? new Date(b.event_starttime).getTime() 
+        : b.event_endtime 
+          ? new Date(b.event_endtime).getTime() 
+          : Infinity;
       return bTime - aTime;
     } else {
       // Default: sort by post_time (newest first)
@@ -677,17 +685,17 @@ export default function FeedPage() {
             <div className={styles.sortTabs}>
               <button
                 type="button"
-                className={`${styles.sortTab} ${sortMode === 'post_date' ? styles.sortTabActive : ''}`}
-                onClick={() => setSortMode('post_date')}
-              >
-                Sort by post date
-              </button>
-              <button
-                type="button"
                 className={`${styles.sortTab} ${sortMode === 'event_start' ? styles.sortTabActive : ''}`}
                 onClick={() => setSortMode('event_start')}
               >
                 Sort by event start
+              </button>
+              <button
+                type="button"
+                className={`${styles.sortTab} ${sortMode === 'post_date' ? styles.sortTabActive : ''}`}
+                onClick={() => setSortMode('post_date')}
+              >
+                Sort by post date
               </button>
             </div>
             <div className={styles.postLimitControl}>

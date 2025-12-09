@@ -40,7 +40,7 @@ export default function LoginPage() {
         {/* Login Button */}
         <div>
           <button onClick={handleLogin} className={styles.loginButton}>
-            Login with Princeton
+            Login with Princeton CAS
           </button>
         </div>
       </div>

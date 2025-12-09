@@ -313,9 +313,18 @@ export default function FeedPage() {
     // Check if post type matches active post filters
     // Empty filter set means "show all" (no filter applied)
     let matchesPostFilter;
-    if (effectivePostFilters.size === 0) {
+    if (effectivePostFilters.size === 0 && activeClubTypeFilters.size === 0) {
+      // No filters active - show all posts including parsed
       matchesPostFilter = true;
+    } else if (effectivePostFilters.size === 0 && activeClubTypeFilters.size > 0) {
+      // Only club type filters active - hide parsed posts
+      if (post.source === "parsed") {
+        matchesPostFilter = false;
+      } else {
+        matchesPostFilter = true;
+      }
     } else {
+      // Post type filters are active
       // If this is a parsed post, only match if "AI-Parsed Posts" filter is active
       if (post.source === "parsed") {
         matchesPostFilter = effectivePostFilters.has("AI-Parsed Posts");

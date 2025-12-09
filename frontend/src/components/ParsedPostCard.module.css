@@ -40,6 +40,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+    align-items: baseline;
+}
+
+.typeTag {
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(253, 186, 116, 0.6);
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .previewText {

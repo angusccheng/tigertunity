@@ -28,12 +28,10 @@ export default function ParsedPostCard({ parsed }) {
 
                         <div className={styles.meta}>
                             <span><strong>Club:</strong> {truncate(parsed.club_name, 20)}</span>
-                            <span><strong>Officer:</strong> {truncate(parsed.officer_name, 20)}</span>
-                            <span><strong>Type:</strong> {parsed.post_type}</span>
-                            {parsed.created_at && (
+                            {parsed.timestamp && (
                                 <span>
                                     <strong>Parsed:</strong>{" "}
-                                    {new Date(parsed.created_at).toLocaleString(undefined, {
+                                    {new Date(parsed.timestamp).toLocaleString(undefined, {
                                         year: "numeric",
                                         month: "2-digit",
                                         day: "2-digit",
@@ -42,6 +40,7 @@ export default function ParsedPostCard({ parsed }) {
                                     })}
                                 </span>
                             )}
+                            <span className={styles.typeTag}>AI-Parsed Post</span>
                         </div>
 
                         <p className={styles.previewText}>

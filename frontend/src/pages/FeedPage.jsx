@@ -310,21 +310,21 @@ export default function FeedPage() {
   // Filter posts based on active filters
   const savedClubNames = new Set(savedClubs.map(c => (c.club_name || '').toLowerCase()));
   const filteredPosts = posts.filter(post => {
-    // Determine if any filter is active
-    const filtersActive = effectivePostFilters.size > 0 || 
-                          activeClubTypeFilters.size > 0 || 
-                          onlyShowSavedClubs || 
-                          (dateFilterEnabled && (startDate || endDate)) ||
-                          (eventDateFilterEnabled && (eventStartDate || eventEndDate)) ||
-                          hidePastEvents ||
-                          searchQuery.trim();
-
-    // Hide parsed posts when any filter is applied
-    if (filtersActive && post.source === "parsed") return false;
-
     // Check if post type matches active post filters
     // Empty filter set means "show all" (no filter applied)
-    const matchesPostFilter = effectivePostFilters.size === 0 || effectivePostFilters.has(post.post_type);
+    let matchesPostFilter;
+    if (effectivePostFilters.size === 0) {
+      matchesPostFilter = true;
+    } else {
+      // If this is a parsed post, only match if "AI-Parsed Posts" filter is active
+      if (post.source === "parsed") {
+        matchesPostFilter = effectivePostFilters.has("AI-Parsed Posts");
+      } else {
+        // Regular post - match against post type filters (excluding AI-Parsed Posts)
+        matchesPostFilter = effectivePostFilters.has(post.post_type);
+      }
+    }
+
     // Check club type filters (include post if missing club_type so we don't hide incomplete data)
     // Empty filter set means "show all" (no filter applied)
     const matchesClubType = activeClubTypeFilters.size === 0 || !post.club_type || activeClubTypeFilters.has(post.club_type);
@@ -477,6 +477,13 @@ export default function FeedPage() {
                     {t}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => togglePostFilter("AI-Parsed Posts")}
+                  className={`${styles.postFilterTag} ${activePostFilters.has("AI-Parsed Posts") ? styles.filterActive : styles.filterInactive}`}
+                >
+                  AI-Parsed Posts
+                </button>
               </div>
             </section>
 

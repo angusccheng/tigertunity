@@ -18,11 +18,15 @@ export default function ParsedPostModal({ parsed, onClose }) {
           <div className={styles.main}>
             <div className={styles.meta}>
               <p><strong>Club:</strong> {parsed.club_name}</p>
-              <p><strong>Officer:</strong> {parsed.officer_name}</p>
-              <p><strong>Type:</strong> {parsed.post_type}</p>
               {parsed.timestamp && (
-                <p className={styles.timestamp}>
-                  Posted: {new Date(parsed.timestamp).toLocaleString()}
+                <p>
+                  <strong>Posted:</strong> {new Date(parsed.timestamp).toLocaleString(undefined, {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
                 </p>
               )}
             </div>

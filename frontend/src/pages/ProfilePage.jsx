@@ -10,7 +10,7 @@ import DMMessenger from "../components/DMMessenger.jsx";
 import ClubRequestCard from "../components/ClubRequestCard.jsx";
 
 // Constants for preference options
-const POST_TYPES = ["Application", "Event", "Food", "General Meeting", "Social", "Speaker", "Workshop", "Other"];
+const POST_TYPES = ["Application", "Event", "Food", "General Meeting", "Social", "Speaker", "Workshop", "Other", "AI-Parsed Posts"];
 const CLUB_TYPES = ["Arts", "Athletics", "Business", "Community Service", "Gov/Policy", "STEM", "Other"];
 
 export default function ProfilePage() {

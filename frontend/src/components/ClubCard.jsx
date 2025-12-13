@@ -72,6 +72,7 @@ export default function ClubCard({
                         onDelete?.(club, e);
                     }}
                     onRequestOfficer={() => {
+                        setShowModal(false);
                         onRequestOfficer?.(club);
                     }}
                     onPostClick={(post) => {
